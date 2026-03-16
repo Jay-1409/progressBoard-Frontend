@@ -1,0 +1,704 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>My Profile - Progress Board</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+    <link rel="icon" type="image/png" href="logo_wobg.png">
+    <link rel="stylesheet" href="style.css">
+    <style>
+        /* ── Profile-specific styles ── */
+        .profile-hero {
+            position: relative;
+            padding: 3rem 0 2rem;
+            text-align: center;
+        }
+
+        .avatar-wrapper {
+            position: relative;
+            display: inline-block;
+            margin-bottom: 1.25rem;
+        }
+
+        .avatar-circle {
+            width: 110px;
+            height: 110px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, var(--primary-color), var(--accent-cyan));
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 2.8rem;
+            font-weight: 700;
+            color: #fff;
+            margin: 0 auto;
+            box-shadow: 0 0 0 4px rgba(139, 92, 246, 0.3), 0 8px 32px rgba(0,0,0,0.4);
+            letter-spacing: 1px;
+            text-transform: uppercase;
+        }
+
+        .avatar-badge {
+            position: absolute;
+            bottom: 4px;
+            right: 4px;
+            width: 28px;
+            height: 28px;
+            border-radius: 50%;
+            background: #10b981;
+            border: 3px solid var(--bg-dark);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .avatar-badge i {
+            font-size: 0.75rem;
+            color: #fff;
+        }
+
+        .profile-name {
+            font-size: 1.9rem;
+            font-weight: 700;
+            color: var(--text-light);
+            margin-bottom: 0.25rem;
+        }
+
+        .profile-email {
+            color: var(--text-muted);
+            font-size: 0.95rem;
+            margin-bottom: 1rem;
+        }
+
+        .profile-meta span {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.3rem;
+            font-size: 0.82rem;
+            color: var(--text-muted);
+            background: rgba(139,92,246,0.10);
+            border: 1px solid rgba(139,92,246,0.25);
+            border-radius: 20px;
+            padding: 0.25rem 0.75rem;
+            margin: 0.2rem;
+        }
+
+        /* ── Glass info card ── */
+        .info-card {
+            background: var(--glass-bg);
+            backdrop-filter: blur(14px);
+            -webkit-backdrop-filter: blur(14px);
+            border: 1px solid var(--glass-border);
+            border-radius: 1.2rem;
+            padding: 1.75rem 2rem;
+            margin-bottom: 1.5rem;
+            transition: transform 0.25s ease, box-shadow 0.25s ease;
+        }
+
+        .info-card:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 12px 40px rgba(139,92,246,0.18);
+        }
+
+        .info-card-title {
+            font-size: 0.78rem;
+            font-weight: 700;
+            letter-spacing: 1.2px;
+            text-transform: uppercase;
+            color: var(--primary-color);
+            margin-bottom: 1.15rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        /* ── Edit-in-place field ── */
+        .profile-field {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0.7rem 0;
+            border-bottom: 1px solid rgba(255,255,255,0.07);
+            gap: 1rem;
+        }
+
+        .profile-field:last-child {
+            border-bottom: none;
+        }
+
+        .field-label {
+            font-size: 0.8rem;
+            color: var(--text-muted);
+            min-width: 90px;
+        }
+
+        .field-value {
+            flex: 1;
+            color: var(--text-light);
+            font-size: 0.95rem;
+            word-break: break-all;
+        }
+
+        .field-input {
+            flex: 1;
+            background: rgba(255,255,255,0.08);
+            border: 1px solid rgba(139,92,246,0.4);
+            border-radius: 0.5rem;
+            color: var(--text-light);
+            padding: 0.35rem 0.75rem;
+            font-size: 0.95rem;
+            outline: none;
+            display: none;
+        }
+
+        .field-input:focus {
+            border-color: var(--primary-color);
+            box-shadow: 0 0 0 2px rgba(139,92,246,0.25);
+        }
+
+        .field-actions {
+            display: flex;
+            gap: 0.4rem;
+        }
+
+        .btn-icon {
+            background: none;
+            border: none;
+            cursor: pointer;
+            padding: 0.25rem 0.4rem;
+            border-radius: 0.4rem;
+            transition: background 0.2s;
+        }
+
+        .btn-icon:hover {
+            background: rgba(139,92,246,0.2);
+        }
+
+        .btn-icon i {
+            font-size: 0.95rem;
+            color: var(--text-muted);
+        }
+
+        .btn-icon.save-btn i  { color: #10b981; }
+        .btn-icon.cancel-btn i { color: #ef4444; }
+
+        /* ── Stat cards ── */
+        .stat-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+            gap: 1rem;
+        }
+
+        .stat-box {
+            background: var(--glass-bg);
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+            border: 1px solid var(--glass-border);
+            border-radius: 1rem;
+            padding: 1.4rem 1rem;
+            text-align: center;
+            transition: transform 0.25s ease, box-shadow 0.25s ease;
+        }
+
+        .stat-box:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 10px 30px rgba(139,92,246,0.2);
+        }
+
+        .stat-box .stat-icon {
+            font-size: 1.6rem;
+            margin-bottom: 0.5rem;
+        }
+
+        .stat-box .stat-num {
+            font-size: 1.7rem;
+            font-weight: 700;
+            color: var(--text-light);
+            display: block;
+        }
+
+        .stat-box .stat-lbl {
+            font-size: 0.78rem;
+            color: var(--text-muted);
+        }
+
+        /* ── Danger zone ── */
+        .danger-zone {
+            border-color: rgba(239,68,68,0.35) !important;
+        }
+
+        .danger-zone .info-card-title {
+            color: #ef4444;
+        }
+
+        /* ── Skeleton loader ── */
+        .skeleton {
+            background: linear-gradient(90deg, rgba(255,255,255,0.06) 25%, rgba(255,255,255,0.12) 50%, rgba(255,255,255,0.06) 75%);
+            background-size: 200% 100%;
+            animation: shimmer 1.6s infinite;
+            border-radius: 6px;
+        }
+
+        @keyframes shimmer {
+            0%   { background-position: 200% 0; }
+            100% { background-position: -200% 0; }
+        }
+
+        /* ── Toast notification ── */
+        .toast-bar {
+            position: fixed;
+            bottom: 1.5rem;
+            left: 50%;
+            transform: translateX(-50%) translateY(120%);
+            background: rgba(16,185,129,0.9);
+            color: #fff;
+            padding: 0.65rem 1.5rem;
+            border-radius: 50px;
+            font-size: 0.9rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            z-index: 9999;
+            transition: transform 0.35s cubic-bezier(0.34,1.56,0.64,1);
+            white-space: nowrap;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.35);
+        }
+
+        .toast-bar.show {
+            transform: translateX(-50%) translateY(0);
+        }
+
+        .toast-bar.error {
+            background: rgba(239,68,68,0.9);
+        }
+    </style>
+</head>
+
+<body>
+    <!-- Ambient background shapes -->
+    <div class="bg-shape shape-1"></div>
+    <div class="bg-shape shape-2"></div>
+    <div class="bg-shape shape-3"></div>
+
+    <!-- Navbar -->
+    <nav class="navbar navbar-expand-lg" id="ftco-navbar">
+        <div class="container">
+            <a class="navbar-brand" href="index.html">
+                <img src="logo_wobg.png" alt="Progress Board Logo" style="height: 36px; vertical-align: middle;"> Progress Board
+            </a>
+            <div class="ms-auto d-flex align-items-center gap-2">
+                <a href="dashboard.html" class="btn btn-outline-light btn-sm">
+                    <i class="bi bi-grid me-1"></i>Dashboard
+                </a>
+                <button class="btn btn-outline-light btn-sm" onclick="handleLogout()">
+                    <i class="bi bi-box-arrow-right me-1"></i>Logout
+                </button>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Alert container -->
+    <div id="alertContainer" style="position:fixed;top:70px;right:20px;z-index:1050;min-width:280px;"></div>
+
+    <!-- Toast bar -->
+    <div class="toast-bar" id="toastBar"></div>
+
+    <div class="container py-4 fade-in" style="max-width:860px;">
+
+        <!-- ── Profile Hero ── -->
+        <div class="profile-hero">
+            <div class="avatar-wrapper">
+                <div class="avatar-circle" id="avatarCircle">
+                    <span id="avatarInitials" class="skeleton" style="width:60px;height:40px;display:inline-block;border-radius:8px;"></span>
+                </div>
+                <div class="avatar-badge"><i class="bi bi-check-lg"></i></div>
+            </div>
+
+            <div id="profileNameDisplay" class="profile-name skeleton" style="width:200px;height:32px;margin:0 auto 0.3rem;"></div>
+            <div id="profileEmailDisplay" class="profile-email skeleton" style="width:240px;height:20px;margin:0 auto 1rem;"></div>
+
+            <div class="profile-meta" id="profileMeta">
+                <span class="skeleton" style="width:110px;height:24px;"></span>
+                <span class="skeleton" style="width:90px;height:24px;"></span>
+            </div>
+        </div>
+
+        <!-- ── Stats ── -->
+        <div class="stat-grid mb-4" id="statsGrid">
+            <div class="stat-box">
+                <div class="stat-icon" style="color:#a78bfa;">🏆</div>
+                <span class="stat-num" id="statGroups">—</span>
+                <span class="stat-lbl">Groups Joined</span>
+            </div>
+            <div class="stat-box">
+                <div class="stat-icon" style="color:#34d399;">✅</div>
+                <span class="stat-num" id="statTasks">—</span>
+                <span class="stat-lbl">Tasks Completed</span>
+            </div>
+            <div class="stat-box">
+                <div class="stat-icon" style="color:#60a5fa;">📋</div>
+                <span class="stat-num" id="statPending">—</span>
+                <span class="stat-lbl">Tasks Pending</span>
+            </div>
+            <div class="stat-box">
+                <div class="stat-icon" style="color:#f59e0b;">⚡</div>
+                <span class="stat-num" id="statStreak">—</span>
+                <span class="stat-lbl">Day Streak</span>
+            </div>
+        </div>
+
+        <!-- ── Personal Information ── -->
+        <div class="info-card">
+            <div class="info-card-title"><i class="bi bi-person-lines-fill"></i> Personal Information</div>
+
+            <!-- Name -->
+            <div class="profile-field" id="fieldName">
+                <span class="field-label">Name</span>
+                <span class="field-value skeleton" id="valName" style="width:140px;height:18px;display:inline-block;border-radius:5px;"></span>
+                <input class="field-input" id="inputName" type="text" placeholder="Your name">
+                <div class="field-actions">
+                    <button class="btn-icon edit-btn" onclick="enableEdit('Name')" title="Edit">
+                        <i class="bi bi-pencil"></i>
+                    </button>
+                    <button class="btn-icon save-btn d-none" id="saveName" onclick="saveField('Name')" title="Save">
+                        <i class="bi bi-check-lg"></i>
+                    </button>
+                    <button class="btn-icon cancel-btn d-none" id="cancelName" onclick="cancelEdit('Name')" title="Cancel">
+                        <i class="bi bi-x-lg"></i>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Email (read-only) -->
+            <div class="profile-field">
+                <span class="field-label">Email</span>
+                <span class="field-value skeleton" id="valEmail" style="width:200px;height:18px;display:inline-block;border-radius:5px;"></span>
+                <div class="field-actions">
+                    <button class="btn-icon" title="Email cannot be changed" style="cursor:default;">
+                        <i class="bi bi-lock" style="color:rgba(255,255,255,0.2);"></i>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Member Since -->
+            <div class="profile-field">
+                <span class="field-label">Member since</span>
+                <span class="field-value" id="valSince">—</span>
+            </div>
+        </div>
+
+        <!-- ── Account ── -->
+        <div class="info-card">
+            <div class="info-card-title"><i class="bi bi-shield-lock-fill"></i> Account</div>
+
+            <div class="profile-field">
+                <span class="field-label">User ID</span>
+                <span class="field-value text-muted" id="valUserId" style="font-family:monospace;font-size:0.82rem;">—</span>
+                <div class="field-actions">
+                    <button class="btn-icon" onclick="copyUserId()" title="Copy User ID">
+                        <i class="bi bi-clipboard" id="copyIcon"></i>
+                    </button>
+                </div>
+            </div>
+
+            <div class="profile-field">
+                <span class="field-label">Password</span>
+                <span class="field-value">••••••••••</span>
+                <div class="field-actions">
+                    <button class="btn-icon" title="Change password (coming soon)" onclick="showToast('Password change coming soon!', true)">
+                        <i class="bi bi-pencil"></i>
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- ── Danger Zone ── -->
+        <div class="info-card danger-zone">
+            <div class="info-card-title"><i class="bi bi-exclamation-triangle-fill"></i> Danger Zone</div>
+            <div class="d-flex justify-content-between align-items-center flex-wrap gap-3">
+                <div>
+                    <p class="mb-0" style="color:var(--text-light);font-size:0.9rem;font-weight:600;">Delete Account</p>
+                    <p class="mb-0" style="color:var(--text-muted);font-size:0.8rem;">Permanently remove your account and all associated data. This cannot be undone.</p>
+                </div>
+                <button class="btn btn-sm" style="background:rgba(239,68,68,0.15);border:1px solid rgba(239,68,68,0.4);color:#ef4444;border-radius:0.6rem;padding:0.4rem 1rem;"
+                    onclick="confirmDeleteAccount()">
+                    <i class="bi bi-trash3 me-1"></i>Delete Account
+                </button>
+            </div>
+        </div>
+
+    </div>
+
+    <footer class="app-footer">
+        <div class="container text-center">
+            <p class="mb-0 text-muted">© 2025 Progress Board. All rights reserved.</p>
+        </div>
+    </footer>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        const BASE_URL = 'https://progress-board-1409-20917d01.koyeb.app';
+        //const BASE_URL = 'http://localhost:8081';
+
+        // ── State ──────────────────────────────────────────────
+        let profileData = {
+            userId: null,
+            name: '',
+            email: '',
+        };
+
+        // ── Helpers ────────────────────────────────────────────
+        function showToast(msg, isError = false) {
+            const toast = document.getElementById('toastBar');
+            toast.innerHTML = `<i class="bi ${isError ? 'bi-info-circle' : 'bi-check-circle'}"></i> ${msg}`;
+            toast.className = `toast-bar${isError ? ' error' : ''} show`;
+            setTimeout(() => toast.classList.remove('show'), 3000);
+        }
+
+        function removeSkeleton(el) {
+            el.classList.remove('skeleton');
+            el.style.width = '';
+            el.style.height = '';
+        }
+
+        function getInitials(name) {
+            if (!name) return '?';
+            const parts = name.trim().split(/\s+/);
+            return parts.length === 1
+                ? parts[0].slice(0, 2)
+                : parts[0][0] + parts[parts.length - 1][0];
+        }
+
+        function formatDate(ms) {
+            if (!ms) return '—';
+            return new Date(ms).toLocaleDateString('en-IN', { year: 'numeric', month: 'long', day: 'numeric' });
+        }
+
+        // ── Populate UI ────────────────────────────────────────
+        function renderProfile(name, email, userId) {
+            profileData = { userId, name, email };
+
+            // Avatar
+            const initials = getInitials(name);
+            const avatarEl = document.getElementById('avatarCircle');
+            avatarEl.innerHTML = initials;
+            avatarEl.style.fontSize = initials.length === 1 ? '3rem' : '2.2rem';
+
+            // Hero text
+            const nameEl = document.getElementById('profileNameDisplay');
+            nameEl.textContent = name || 'Unknown User';
+            removeSkeleton(nameEl);
+
+            const emailEl = document.getElementById('profileEmailDisplay');
+            emailEl.textContent = email || '—';
+            removeSkeleton(emailEl);
+
+            // Meta badges
+            document.getElementById('profileMeta').innerHTML = `
+                <span><i class="bi bi-person-badge"></i>${userId ? userId.slice(-8) : '—'}</span>
+                <span><i class="bi bi-shield-check text-success"></i>Active</span>
+            `;
+
+            // Fields
+            const valName = document.getElementById('valName');
+            valName.textContent = name || '—';
+            removeSkeleton(valName);
+            document.getElementById('inputName').value = name || '';
+
+            const valEmail = document.getElementById('valEmail');
+            valEmail.textContent = email || '—';
+            removeSkeleton(valEmail);
+
+            document.getElementById('valUserId').textContent = userId || '—';
+
+            // Member since (extract from MongoDB ObjectId timestamp if possible)
+            const since = document.getElementById('valSince');
+            if (userId && userId.length >= 8) {
+                try {
+                    const ts = parseInt(userId.substring(0, 8), 16) * 1000;
+                    since.textContent = formatDate(ts);
+                } catch { since.textContent = '—'; }
+            }
+        }
+
+        // ── Fetch profile data ─────────────────────────────────
+        async function loadProfile() {
+            const userId = localStorage.getItem('userId');
+            if (!userId) {
+                window.location.href = 'login.html';
+                return;
+            }
+
+            document.getElementById('valUserId').textContent = userId;
+
+            // Fetch name
+            try {
+                const nameRes = await fetch(`${BASE_URL}/user/get-userid/${userId}`);
+                const name = await nameRes.text();
+
+                // Try to fetch email (best effort)
+                let email = localStorage.getItem('userEmail') || '';
+                try {
+                    const emailRes = await fetch(`${BASE_URL}/user/get-email/${userId}`);
+                    if (emailRes.ok) {
+                        email = await emailRes.text();
+                        localStorage.setItem('userEmail', email);
+                    }
+                } catch { /* email endpoint may not exist yet */ }
+
+                renderProfile(name, email, userId);
+                localStorage.setItem('userName', name);
+
+            } catch (err) {
+                console.error('Failed to load profile:', err);
+                showToast('Failed to load profile data.', true);
+                // Still render from cache
+                renderProfile(
+                    localStorage.getItem('userName') || 'Unknown',
+                    localStorage.getItem('userEmail') || '',
+                    userId
+                );
+            }
+        }
+
+        // ── Fetch stats ────────────────────────────────────────
+        async function loadStats() {
+            const userId = localStorage.getItem('userId');
+            if (!userId) return;
+
+            try {
+                const res = await fetch(`${BASE_URL}/group/get-user-groups/${userId}`);
+                if (res.ok) {
+                    const groups = await res.json();
+                    document.getElementById('statGroups').textContent = groups.length;
+
+                    // Aggregate tasks across groups
+                    let completed = 0, pending = 0;
+                    groups.forEach(g => {
+                        const tasks = g.tasks || g.todoList || [];
+                        tasks.forEach(t => {
+                            if (t.status === 'DONE' || t.completed === true) completed++;
+                            else pending++;
+                        });
+                    });
+                    document.getElementById('statTasks').textContent = completed;
+                    document.getElementById('statPending').textContent = pending;
+                }
+            } catch { /* silently fail */ }
+
+            // Streak placeholder from localStorage
+            const streak = localStorage.getItem('userStreak') || '1';
+            document.getElementById('statStreak').textContent = streak;
+        }
+
+        // ── Edit-in-place ──────────────────────────────────────
+        function enableEdit(fieldKey) {
+            const val = document.getElementById(`val${fieldKey}`);
+            const input = document.getElementById(`input${fieldKey}`);
+            const saveBtn = document.getElementById(`save${fieldKey}`);
+            const cancelBtn = document.getElementById(`cancel${fieldKey}`);
+            const editBtn = val.parentElement ? document.querySelector(`#field${fieldKey} .edit-btn`) : null;
+
+            val.style.display = 'none';
+            input.style.display = 'block';
+            input.focus();
+            saveBtn.classList.remove('d-none');
+            cancelBtn.classList.remove('d-none');
+            if (editBtn) editBtn.classList.add('d-none');
+        }
+
+        function cancelEdit(fieldKey) {
+            const val = document.getElementById(`val${fieldKey}`);
+            const input = document.getElementById(`input${fieldKey}`);
+            const saveBtn = document.getElementById(`save${fieldKey}`);
+            const cancelBtn = document.getElementById(`cancel${fieldKey}`);
+
+            input.value = val.textContent === '—' ? '' : val.textContent;
+            val.style.display = '';
+            input.style.display = 'none';
+            saveBtn.classList.add('d-none');
+            cancelBtn.classList.add('d-none');
+
+            const editBtn = document.querySelector(`#field${fieldKey} .edit-btn`);
+            if (editBtn) editBtn.classList.remove('d-none');
+        }
+
+        async function saveField(fieldKey) {
+            const val = document.getElementById(`val${fieldKey}`);
+            const input = document.getElementById(`input${fieldKey}`);
+            const newValue = input.value.trim();
+
+            if (!newValue) { showToast('Value cannot be empty.', true); return; }
+
+            const userId = localStorage.getItem('userId');
+
+            if (fieldKey === 'Name') {
+                try {
+                    const res = await fetch(`${BASE_URL}/user/update-name/${userId}?name=${encodeURIComponent(newValue)}`, {
+                        method: 'PUT'
+                    });
+
+                    if (res.ok) {
+                        val.textContent = newValue;
+                        localStorage.setItem('userName', newValue);
+                        // Update avatar + hero name
+                        document.getElementById('profileNameDisplay').textContent = newValue;
+                        document.getElementById('avatarCircle').textContent = getInitials(newValue);
+                        showToast('Name updated successfully!');
+                    } else {
+                        // Update locally even if API fails (graceful)
+                        val.textContent = newValue;
+                        localStorage.setItem('userName', newValue);
+                        document.getElementById('profileNameDisplay').textContent = newValue;
+                        document.getElementById('avatarCircle').textContent = getInitials(newValue);
+                        showToast('Saved locally (API endpoint may not exist yet).', true);
+                    }
+                } catch {
+                    val.textContent = newValue;
+                    localStorage.setItem('userName', newValue);
+                    showToast('Saved locally.', true);
+                }
+            }
+
+            cancelEdit(fieldKey);
+        }
+
+        // ── Copy user ID ───────────────────────────────────────
+        function copyUserId() {
+            const uid = document.getElementById('valUserId').textContent;
+            navigator.clipboard.writeText(uid).then(() => {
+                document.getElementById('copyIcon').className = 'bi bi-check-lg';
+                setTimeout(() => document.getElementById('copyIcon').className = 'bi bi-clipboard', 2000);
+                showToast('User ID copied!');
+            });
+        }
+
+        // ── Logout ─────────────────────────────────────────────
+        function handleLogout() {
+            localStorage.clear();
+            window.location.href = 'index.html';
+        }
+
+        // ── Delete account ─────────────────────────────────────
+        function confirmDeleteAccount() {
+            if (confirm('⚠️ Are you sure you want to delete your account? This action is permanent and cannot be undone.')) {
+                showToast('Account deletion coming soon!', true);
+            }
+        }
+
+        // ── Init ───────────────────────────────────────────────
+        window.onload = async function () {
+            const userId = localStorage.getItem('userId');
+            if (!userId) {
+                window.location.href = 'login.html';
+                return;
+            }
+            await loadProfile();
+            await loadStats();
+        };
+    </script>
+</body>
+
+</html>
