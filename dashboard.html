@@ -348,7 +348,7 @@
 
                 // Redirect after a short delay
                 setTimeout(() => {
-                    window.location.href = '/';  // Redirect to homepage or login page
+                    window.location.href = 'index.html';  // Redirect to homepage or login page
                 }, 1000);
             }, 500);
         }
@@ -448,7 +448,7 @@
                         // Add event listener to navigate to group details
                         groupBox.addEventListener('click', () => {
                             const groupId = group.obId || objectIdToString(group.id);
-                            window.location.href = `/group.html?id=${groupId}`;
+                            window.location.href = `group.html?id=${groupId}`;
                         });
 
                         groupContainer.appendChild(groupBox);
@@ -469,7 +469,7 @@
             if (!userId) {
                 showAlert('You are not logged in. Please login first.', 'warning');
                 setTimeout(() => {
-                    window.location.href = '/';
+                    window.location.href = 'index.html';
                 }, 2000);
             }
         }

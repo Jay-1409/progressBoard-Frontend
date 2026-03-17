@@ -158,7 +158,7 @@
             // Also clear the current day data to force reload on next login
             localStorage.removeItem('currentDay');
 
-            window.location.href = '/';
+            window.location.href = 'index.html';
         }
 
         // Helper function to show loading state on a button
@@ -200,7 +200,7 @@
                     const box = document.createElement('div');
                     box.className = 'group-box';
                     box.innerHTML = `<h5>${g.name}</h5>`;
-                    box.onclick = () => window.location.href = `/group-details.html?id=${g.id.timestamp}`;
+                    box.onclick = () => window.location.href = `group-details.html?id=${g.id.timestamp}`;
                     container.appendChild(box);
                 });
             }
@@ -825,7 +825,7 @@ async function editTask(task, index) {
                 if (!res.ok) throw new Error("Failed to leave group");
 
                 alert("You have left the group.");
-                window.location.href = "/dashboard.html";  // or wherever you want to redirect after leaving
+                window.location.href = "dashboard.html";  // or wherever you want to redirect after leaving
 
             } catch (err) {
                 console.error("Leave group error:", err);
