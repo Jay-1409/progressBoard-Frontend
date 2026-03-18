@@ -683,7 +683,18 @@ input.form-control::placeholder {
 .group-box p { margin: 0; color: var(--text-secondary); font-size: 0.9rem; }
 
 /* Group Details Specifics */
-.main-content { gap: 2rem !important; }
+.main-content {
+  display: grid !important;
+  grid-template-columns: 1fr;
+  gap: 2rem !important;
+  align-items: start;
+}
+
+@media (min-width: 992px) {
+  .main-content {
+    grid-template-columns: 1fr 2fr !important;
+  }
+}
 
 .leaderboard, .task-sidebar {
   background: var(--bg-card) !important;
