@@ -24,9 +24,12 @@
     <nav class="navbar navbar-expand-lg" id="ftco-navbar">
         <div class="container">
             <a class="navbar-brand" href="dashboard.html">
-                <i class="bi bi-kanban"></i> Progress Board
+                <img src="logo_wobg.png" alt="Progress Board Logo" style="height: 36px; vertical-align: middle;"> Progress Board
             </a>
-            <div class="ms-auto">
+            <div class="ms-auto d-flex align-items-center gap-2">
+                <button id="settingsBtn" class="btn btn-outline-light btn-sm">
+                    <i class="bi bi-gear"></i> Settings
+                </button>
                 <button class="btn btn-outline-light btn-sm" onclick="handleLogout()">Logout</button>
             </div>
         </div>
@@ -54,7 +57,7 @@
     </div>
 
 
-    <div class="container py-4">
+    <div class="container py-5 mt-3">
         <h2 class="mb-4 text-light">Daily Leaderboard</h2>
         <div class="main-content">
             <div class="leaderboard position-relative">
@@ -79,9 +82,6 @@
                     <button id="addTaskBtn" class="btn btn-success" disabled>
                         <span class="button-text">Add Task</span>
                         <span class="spinner-border spinner-border-sm d-none" role="status" aria-hidden="true"></span>
-                    </button>
-                    <button id="settingsBtn" class="btn btn-outline-secondary btn-sm ms-2">
-                        <i class="bi bi-gear"></i> Settings
                     </button>
                 </div>
 
@@ -132,8 +132,8 @@
         const TASK_BASE = 'https://progress-board-1409-20917d01.koyeb.app/task';
         const GROUP_BASE = 'https://progress-board-1409-20917d01.koyeb.app/group';
 
-        //const TASK_BASE = 'http://localhost:8081/task';
-        //const GROUP_BASE = 'http://localhost:8081/group';
+        // const TASK_BASE = 'http://localhost:8081/task';
+        // const GROUP_BASE = 'http://localhost:8081/group';
         const userId = localStorage.getItem('userId');
 
         // Track current day
@@ -317,147 +317,229 @@
             if (!currentDay) return;
 
             const dayInfo = document.getElementById('currentDayInfo');
-            const completedTasks = currentDay.tasks ? currentDay.tasks.filter(t => t.completed).length : 0;
-            const totalTasks = currentDay.tasks ? currentDay.tasks.length : 0;
-            const progress = totalTasks > 0 ? Math.round((completedTasks / totalTasks) * 100) : 0;
+            
+            let totalTaskProgress = 0;
+            const tasks = currentDay.tasks || [];
+            
+            tasks.forEach(task => {
+                if (task.subTasks && task.subTasks.length > 0) {
+                    const completedSub = task.subTasks.filter(s => s.completed).length;
+                    totalTaskProgress += (completedSub / task.subTasks.length);
+                } else {
+                    totalTaskProgress += task.completed ? 1 : 0;
+                }
+            });
+
+            const totalTasks = tasks.length;
+            const progress = totalTasks > 0 ? Math.round((totalTaskProgress / totalTasks) * 100) : 0;
 
             dayInfo.innerHTML = `
             <div class="day-header">
                 <div class="day-date">Date: ${currentDay.dateFor}</div>
-                <div class="day-progress">Progress: ${progress}% (${completedTasks}/${totalTasks})</div>
+                <div class="day-progress">Progress: ${progress}%</div>
             </div>
         `;
         }
 
         function renderTasks(tasks) {
-    const list = document.getElementById('taskList');
-    list.innerHTML = '';
+            const list = document.getElementById('taskList');
+            list.innerHTML = '';
 
-    if (!tasks || tasks.length === 0) {
-        list.innerHTML = '<div class="alert alert-light">No tasks added for this day yet.</div>';
-        return;
-    }
+            if (!tasks || tasks.length === 0) {
+                list.innerHTML = '<div class="alert alert-light">No tasks added for this day yet.</div>';
+                return;
+            }
 
-    tasks.forEach((task, index) => {
-        const item = document.createElement('div');
-        item.className = 'task-item';
+            tasks.forEach((task, taskIndex) => {
+                const item = document.createElement('div');
+                item.className = 'task-item mb-2';
 
-        // Checkbox
-        const checkbox = document.createElement('input');
-        checkbox.type = 'checkbox';
-        checkbox.className = 'form-check-input me-2';
-        checkbox.checked = task.completed;
-        checkbox.onchange = () => updateTaskStatus(task);
+                const mainTaskRow = document.createElement('div');
+                mainTaskRow.className = 'd-flex align-items-center';
 
-        // Task label
-        const label = document.createElement('span');
-        label.textContent = task.title;
-        label.className = 'flex-grow-1';
-        if (task.completed) label.classList.add('completed-task');
+                // Checkbox
+                const checkbox = document.createElement('input');
+                checkbox.type = 'checkbox';
+                checkbox.className = 'form-check-input me-2';
+                checkbox.checked = task.completed;
+                // If has subtasks, checkbox state is visual or toggles all
+                checkbox.onchange = () => updateTaskStatus(task);
 
-        // Edit button
-        const editBtn = document.createElement('button');
-        editBtn.className = 'btn btn-sm btn-outline-warning ms-2';
-        editBtn.textContent = 'Edit';
-        editBtn.onclick = () => editTask(task, index);
+                // Task label
+                const label = document.createElement('span');
+                label.textContent = task.title;
+                label.className = 'flex-grow-1';
+                if (task.completed) label.classList.add('completed-task');
 
-        item.append(checkbox, label, editBtn);
-        list.appendChild(item);
-    });
-}
-async function editTask(task, index) {
-    const newTitle = prompt("Edit task title:", task.title);
-    if (newTitle === null || newTitle.trim() === "") return; // Cancelled or empty
+                // Actions Container
+                const actions = document.createElement('div');
+                actions.className = 'task-actions';
 
-    task.title = newTitle.trim();
+                // Add Subtask button
+                const addSubBtn = document.createElement('button');
+                addSubBtn.className = 'btn btn-sm btn-outline-primary p-1 px-2';
+                addSubBtn.innerHTML = '<i class="bi bi-plus-circle"></i>';
+                addSubBtn.title = 'Add Subtask';
+                addSubBtn.onclick = () => addSubTask(taskIndex);
 
-    try {
-        setSectionLoading('tasks', true);
+                // Edit button
+                const editBtn = document.createElement('button');
+                editBtn.className = 'btn btn-sm btn-outline-warning p-1 px-2';
+                editBtn.innerHTML = '<i class="bi bi-pencil"></i>';
+                editBtn.onclick = () => editTask(task, taskIndex);
 
-        const convertedUserId = convertToObjectId(userId);
+                // Delete Task Button
+                const deleteBtn = document.createElement('button');
+                deleteBtn.className = 'btn btn-sm btn-outline-danger p-1 px-2';
+                deleteBtn.innerHTML = '<i class="bi bi-trash"></i>';
+                deleteBtn.onclick = () => deleteTask(taskIndex);
 
-        // Update the task list on the server
-        const response = await fetch(`${TASK_BASE}/update-user-tasks/${convertedUserId}`, {
-            method: 'PUT',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(currentDay)
-        });
+                actions.append(addSubBtn, editBtn, deleteBtn);
+                mainTaskRow.append(checkbox, label, actions);
+                item.appendChild(mainTaskRow);
 
-        if (!response.ok) throw new Error('Failed to update task');
+                // Render Subtasks
+                if (task.subTasks && task.subTasks.length > 0) {
+                    const subList = document.createElement('div');
+                    subList.className = 'subtask-list';
 
-        // Update local storage
-        localStorage.setItem('currentDay', JSON.stringify(currentDay));
+                    task.subTasks.forEach((sub, subIndex) => {
+                        const subItem = document.createElement('div');
+                        subItem.className = 'subtask-item';
 
-        // Re-render tasks
-        renderTasks(currentDay.tasks);
-        renderCurrentDay();
-        loadLeaderboardData();
+                        const subCheckbox = document.createElement('input');
+                        subCheckbox.type = 'checkbox';
+                        subCheckbox.className = 'form-check-input me-2';
+                        subCheckbox.checked = sub.completed;
+                        subCheckbox.onchange = () => toggleSubTask(taskIndex, subIndex);
 
-    } catch (error) {
-        console.error("Error editing task:", error);
-        alert("Failed to edit task. Please try again.");
-    } finally {
-        setSectionLoading('tasks', false);
-    }
-}
+                        const subLabel = document.createElement('span');
+                        subLabel.textContent = sub.title;
+                        subLabel.className = 'flex-grow-1';
+                        if (sub.completed) subLabel.classList.add('completed-task');
 
+                        const subDeleteBtn = document.createElement('button');
+                        subDeleteBtn.className = 'btn btn-sm text-danger p-0 ms-2';
+                        subDeleteBtn.innerHTML = '<i class="bi bi-x"></i>';
+                        subDeleteBtn.onclick = () => deleteSubTask(taskIndex, subIndex);
 
-        async function updateTaskStatus(task) {
-            if (!currentDay || requestFlags.updatingTask) return;
+                        subItem.append(subCheckbox, subLabel, subDeleteBtn);
+                        subList.appendChild(subItem);
+                    });
+                    item.appendChild(subList);
+                }
+
+                list.appendChild(item);
+            });
+        }
+        async function addSubTask(taskIndex) {
+            const title = prompt("Enter subtask title:");
+            if (!title || !title.trim()) return;
+
+            if (!currentDay.tasks[taskIndex].subTasks) {
+                currentDay.tasks[taskIndex].subTasks = [];
+            }
+
+            currentDay.tasks[taskIndex].subTasks.push({
+                title: title.trim(),
+                completed: false
+            });
+
+            await saveAllTasks();
+        }
+
+        async function toggleSubTask(taskIndex, subIndex) {
+            const sub = currentDay.tasks[taskIndex].subTasks[subIndex];
+            sub.completed = !sub.completed;
+            
+            // Auto-update parent task completion if all subtasks are done
+            const allDone = currentDay.tasks[taskIndex].subTasks.every(s => s.completed);
+            currentDay.tasks[taskIndex].completed = allDone;
+
+            await saveAllTasks();
+        }
+
+        async function deleteSubTask(taskIndex, subIndex) {
+            if (!confirm("Delete this subtask?")) return;
+            currentDay.tasks[taskIndex].subTasks.splice(subIndex, 1);
+            await saveAllTasks();
+        }
+
+        async function deleteTask(taskIndex) {
+            if (!confirm("Delete this task and all its subtasks?")) return;
+            currentDay.tasks.splice(taskIndex, 1);
+            await saveAllTasks();
+        }
+
+        async function saveAllTasks() {
+            if (requestFlags.updatingTask || !currentDay) return;
 
             try {
                 requestFlags.updatingTask = true;
                 setSectionLoading('tasks', true);
 
-                // Find and update the task in current day
-                const taskIndex = currentDay.tasks.findIndex(t => t.title === task.title);
-                if (taskIndex !== -1) {
-                    currentDay.tasks[taskIndex].completed = !currentDay.tasks[taskIndex].completed;
-
-                    // Calculate new progress
-                    const completedTasks = currentDay.tasks.filter(t => t.completed).length;
-                    const totalTasks = currentDay.tasks.length;
-                    currentDay.progress = totalTasks > 0 ? (completedTasks / totalTasks) * 100 : 0;
-
-                    const convertedUserId = convertToObjectId(userId);
-
-                    // Add unique identifier to query to avoid non-unique result error
-                    // Adding id field to the request to ensure we target the specific day
-                    const dayToUpdate = {
-                        ...currentDay,
-                        dateFor: new Date().toISOString().split('T')[0] // This gives you 'YYYY-MM-DD' format
-                    };
-                    console.log(dayToUpdate);
-
-                    const response = await fetch(`${TASK_BASE}/update-user-tasks/${convertedUserId}`, {
-                        method: 'PUT',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify(dayToUpdate)
-                    });
-
-                    if (!response.ok) {
-                        throw new Error('Server returned error: ' + response.status);
-                    }
-
-                    // Update local storage with latest data
-                    localStorage.setItem('currentDay', JSON.stringify(currentDay));
-
-                    // Update UI
-                    renderCurrentDay();
-                    renderTasks(currentDay.tasks);
-                    loadLeaderboardData();
+                // Ensure dateFor is present for backend matching
+                if (!currentDay.dateFor) {
+                    currentDay.dateFor = new Date().toISOString().split('T')[0];
                 }
-            } catch (error) {
-                console.error("Failed to update task:", error);
-                alert("Failed to update task status. Please try again.");
 
-                // On error, reload from server to ensure we're in sync
-                localStorage.removeItem('currentDay');
-                loadTasks();
+                const convertedUserId = convertToObjectId(userId);
+                
+                // Recalculate progress for UI (though backend does it too)
+                let totalProgress = 0;
+                const tasks = currentDay.tasks || [];
+                tasks.forEach(task => {
+                    if (task.subTasks && task.subTasks.length > 0) {
+                        const completedSub = task.subTasks.filter(s => s.completed).length;
+                        totalProgress += (completedSub / task.subTasks.length);
+                    } else {
+                        totalProgress += task.completed ? 1 : 0;
+                    }
+                });
+                currentDay.progress = tasks.length > 0 ? (totalProgress / tasks.length) * 100 : 0;
+
+                const response = await fetch(`${TASK_BASE}/update-user-tasks/${convertedUserId}`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(currentDay)
+                });
+
+                if (!response.ok) throw new Error('Failed to save tasks');
+
+                localStorage.setItem('currentDay', JSON.stringify(currentDay));
+                renderCurrentDay();
+                renderTasks(currentDay.tasks);
+                loadLeaderboardData();
+            } catch (error) {
+                console.error("Error saving tasks:", error);
+                alert("Failed to save changes.");
             } finally {
                 setSectionLoading('tasks', false);
                 requestFlags.updatingTask = false;
             }
+        }
+
+        async function editTask(task, index) {
+            const newTitle = prompt("Edit task title:", task.title);
+            if (newTitle === null || newTitle.trim() === "") return;
+
+            task.title = newTitle.trim();
+            await saveAllTasks();
+        }
+
+        async function updateTaskStatus(task) {
+            const taskIndex = currentDay.tasks.findIndex(t => t.title === task.title);
+            if (taskIndex === -1) return;
+
+            const isCompleted = !currentDay.tasks[taskIndex].completed;
+            currentDay.tasks[taskIndex].completed = isCompleted;
+
+            // If it has subtasks, toggle them all
+            if (currentDay.tasks[taskIndex].subTasks && currentDay.tasks[taskIndex].subTasks.length > 0) {
+                currentDay.tasks[taskIndex].subTasks.forEach(s => s.completed = isCompleted);
+            }
+
+            await saveAllTasks();
         }
 
         async function addDay() {
@@ -768,12 +850,33 @@ async function editTask(task, index) {
                 if (userTasks && Array.isArray(userTasks.tasks)) {
                     userTasks.tasks.forEach(task => {
                         const listItem = document.createElement('li');
-                        listItem.className = 'list-group-item d-flex justify-content-between align-items-center';
+                        listItem.className = 'list-group-item';
 
+                        const mainTask = document.createElement('div');
+                        mainTask.className = 'd-flex justify-content-between align-items-center';
+                        
                         const title = task.title || 'Untitled Task';
-                        const status = task.completed ? '✅ Completed' : '❌ Incomplete';
+                        const status = task.completed ? '✅' : '❌';
+                        
+                        mainTask.innerHTML = `<span>${title}</span> <span>${status}</span>`;
+                        listItem.appendChild(mainTask);
 
-                        listItem.textContent = `${title} — ${status}`;
+                        // Show subtasks if they exist
+                        if (task.subTasks && task.subTasks.length > 0) {
+                            const subList = document.createElement('ul');
+                            subList.className = 'list-unstyled ms-4 mt-2 border-start ps-3';
+                            subList.style.fontSize = '0.9rem';
+                            subList.style.opacity = '0.8';
+
+                            task.subTasks.forEach(sub => {
+                                const subItem = document.createElement('li');
+                                subItem.className = 'd-flex justify-content-between';
+                                subItem.innerHTML = `<span>${sub.title}</span> <span>${sub.completed ? '✓' : '○'}</span>`;
+                                subList.appendChild(subItem);
+                            });
+                            listItem.appendChild(subList);
+                        }
+
                         userTaskList.appendChild(listItem);
                     });
                 } else {
