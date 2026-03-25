@@ -24,7 +24,8 @@
     <nav class="navbar navbar-expand-lg" id="ftco-navbar">
         <div class="container">
             <a class="navbar-brand" href="dashboard.html">
-                <img src="logo_wobg.png" alt="Progress Board Logo" style="height: 36px; vertical-align: middle;"> Progress Board
+                <img src="logo_wobg.png" alt="Progress Board Logo" style="height: 36px; vertical-align: middle;">
+                Progress Board
             </a>
             <div class="ms-auto d-flex align-items-center gap-2">
                 <button id="settingsBtn" class="btn btn-outline-light btn-sm">
@@ -89,11 +90,36 @@
                     <div class="input-group mb-3">
                         <input type="text" id="taskInput" class="form-control" placeholder="Enter task title"
                             required />
+                        <div class="input-group-text bg-dark text-light border-secondary" title="Mark as Private">
+                            <input class="form-check-input mt-0 me-1" type="checkbox" id="taskPrivateToggle"
+                                aria-label="Private Task">
+                            <i class="bi bi-lock-fill"></i>
+                        </div>
+                        <button type="button" id="suggestAiBtn" class="btn btn-info text-white"
+                            onclick="handleAiSuggestion()">
+                            <span class="button-text">✨ AI Suggest</span>
+                            <span class="spinner-border spinner-border-sm d-none" role="status"
+                                aria-hidden="true"></span>
+                        </button>
                         <button type="submit" class="btn btn-success">
                             <span class="button-text">Save</span>
                             <span class="spinner-border spinner-border-sm d-none" role="status"
                                 aria-hidden="true"></span>
                         </button>
+                    </div>
+                    <!-- AI suggestion preview container (hidden by default) -->
+                    <div id="aiSuggestionPreview" class="d-none mt-2 p-3 border rounded bg-dark border-secondary">
+                        <h6 class="text-info d-flex justify-content-between align-items-center mb-0">
+                            AI Suggested Plan
+                            <span id="aiLevelBadge" class="badge"></span>
+                        </h6>
+                        <ul id="aiSubtaskList" class="list-group list-group-flush mb-3 mt-2"></ul>
+                        <div class="d-flex gap-2">
+                            <button type="button" class="btn btn-sm btn-success w-100"
+                                onclick="acceptAiSuggestion()">Accept Plan</button>
+                            <button type="button" class="btn btn-sm btn-outline-light w-100"
+                                onclick="discardAiSuggestion()">Discard</button>
+                        </div>
                     </div>
                 </form>
 
@@ -131,9 +157,8 @@
 
         const TASK_BASE = 'https://progress-board-1409-20917d01.koyeb.app/task';
         const GROUP_BASE = 'https://progress-board-1409-20917d01.koyeb.app/group';
-
-        // const TASK_BASE = 'http://localhost:8081/task';
-        // const GROUP_BASE = 'http://localhost:8081/group';
+        //const TASK_BASE = 'http://localhost:8081/task';
+        //const GROUP_BASE = 'http://localhost:8081/group';
         const userId = localStorage.getItem('userId');
 
         // Track current day
@@ -248,60 +273,31 @@
 
                 // First check if today exists to update the Add Day button visibility
                 const todayExists = await checkIfTodayExists();
-                console.log("today exists: ", todayExists);
-                // Get the stored day (if any)
-                const storedDay = localStorage.getItem('currentDay');
-                let storedDayData = null;
-                if (storedDay) {
-                    storedDayData = JSON.parse(storedDay);
-                }
 
-                // Check for data inconsistency - if server says today exists but local storage says no
-                // OR if server says today doesn't exist but local storage has data
-                const dataInconsistent = (todayExists && !storedDayData) ||
-                    (!todayExists && storedDayData);
+                // Always fetch from server to ensure fresh data on refresh
+                const convertedUserId = convertToObjectId(userId);
+                const res = await fetch(`${TASK_BASE}/get-user-tasks/${convertedUserId}`);
 
-                // Always fetch from server on first visit to a device or if there's inconsistency
-                if (!storedDay || dataInconsistent) {
-                    // Fetch from server
-                    console.log("data not found now fetching");
-                    const convertedUserId = convertToObjectId(userId);
-                    const res = await fetch(`${TASK_BASE}/get-user-tasks/${convertedUserId}`);
-                    const data = await res.json();
-                    console.log(data);
-                    // Check if there are any days with tasks
-                    if (data) {
-                        console.log("entered data.length > 0 && data");
-                        // Sort days by date (newest first)
-                        //                   const sortedDays = data.sort((a, b) => 
-                        //                       new Date(b.dateFor) - new Date(a.dateFor)
-                        //);
+                if (res.ok) {
+                    const text = await res.text();
+                    if (text && text.trim() !== "") {
+                        const data = JSON.parse(text);
+                        currentDay = data;
 
-                        // Set current day to the most recent one
-                        //  currentDay = sortedDays[0];
-
-                        // Save to local storage
-                        localStorage.setItem('currentDay', JSON.stringify(data));
+                        localStorage.setItem('currentDay', JSON.stringify(currentDay));
                         renderCurrentDay();
-                        console.log(data.tasks);
-                        renderTasks(data.tasks || []);
-
-                        // Enable add task button since we have a day
+                        renderTasks(currentDay.tasks || []);
                         document.getElementById('addTaskBtn').disabled = false;
                     } else {
+                        currentDay = null;
+                        localStorage.removeItem('currentDay');
                         document.getElementById('currentDayInfo').innerHTML =
                             '<div class="alert alert-info">No days added yet. Click "Add Day" to get started.</div>';
                         document.getElementById('taskList').innerHTML = '';
-
-                        // Disable add task button since we don't have a day yet
                         document.getElementById('addTaskBtn').disabled = true;
                     }
                 } else {
-                    // If we have consistent data in local storage, use it
-                    currentDay = storedDayData;
-                    renderCurrentDay();
-                    renderTasks(currentDay.tasks || []);
-                    document.getElementById('addTaskBtn').disabled = false;
+                    throw new Error("Failed to load tasks");
                 }
             } catch (error) {
                 console.error("Error loading tasks:", error);
@@ -317,10 +313,10 @@
             if (!currentDay) return;
 
             const dayInfo = document.getElementById('currentDayInfo');
-            
+
             let totalTaskProgress = 0;
             const tasks = currentDay.tasks || [];
-            
+
             tasks.forEach(task => {
                 if (task.subTasks && task.subTasks.length > 0) {
                     const completedSub = task.subTasks.filter(s => s.completed).length;
@@ -370,6 +366,17 @@
                 label.textContent = task.title;
                 label.className = 'flex-grow-1';
                 if (task.completed) label.classList.add('completed-task');
+
+                if (task.level) {
+                    const badge = document.createElement('span');
+                    badge.textContent = task.level;
+                    badge.className = 'badge ms-2 ' +
+                        (task.level.toLowerCase() === 'easy' ? 'bg-success' :
+                            task.level.toLowerCase() === 'medium' ? 'bg-warning text-dark' :
+                                task.level.toLowerCase() === 'hard' ? 'bg-danger' : 'bg-secondary');
+                    badge.style.fontSize = '0.7em';
+                    label.appendChild(badge);
+                }
 
                 // Actions Container
                 const actions = document.createElement('div');
@@ -451,7 +458,7 @@
         async function toggleSubTask(taskIndex, subIndex) {
             const sub = currentDay.tasks[taskIndex].subTasks[subIndex];
             sub.completed = !sub.completed;
-            
+
             // Auto-update parent task completion if all subtasks are done
             const allDone = currentDay.tasks[taskIndex].subTasks.every(s => s.completed);
             currentDay.tasks[taskIndex].completed = allDone;
@@ -484,7 +491,7 @@
                 }
 
                 const convertedUserId = convertToObjectId(userId);
-                
+
                 // Recalculate progress for UI (though backend does it too)
                 let totalProgress = 0;
                 const tasks = currentDay.tasks || [];
@@ -592,24 +599,21 @@
             }
         }
 
-        async function addTask(taskTitle) {
+        async function addTask(taskTitle, level = null, subTasks = [], isPrivate = false) {
             if (!currentDay || requestFlags.addingTask) return;
 
             try {
                 requestFlags.addingTask = true;
                 const taskFormSubmitBtn = document.querySelector('#taskForm button[type="submit"]');
                 const buttonText = taskFormSubmitBtn.querySelector('.button-text');
-                const spinner = taskFormSubmitBtn.querySelector('.spinner-border');
-
-                // Show loading state
-                taskFormSubmitBtn.disabled = true;
-                buttonText.classList.add('d-none');
-                spinner.classList.remove('d-none');
 
                 // Create new task
                 const newTask = {
                     title: taskTitle,
-                    completed: false
+                    completed: false,
+                    level: level,
+                    isPrivate: isPrivate,
+                    subTasks: subTasks.map(subTitle => ({ title: subTitle, completed: false }))
                 };
 
                 // Add task to current day
@@ -636,15 +640,10 @@
                     const updatedResponse = await fetch(`${TASK_BASE}/get-user-tasks/${convertedUserId}`);
 
                     if (updatedResponse.ok) {
-                        const data = await updatedResponse.json();
-                        if (data && data.length > 0) {
-                            // Sort by date and take the newest one
-                            const sortedDays = data.sort((a, b) =>
-                                new Date(b.dateFor) - new Date(a.dateFor)
-                            );
-                            currentDay = sortedDays[0];
-
-                            // Update local storage
+                        const text = await updatedResponse.text();
+                        if (text && text.trim() !== "") {
+                            const data = JSON.parse(text);
+                            currentDay = data;
                             localStorage.setItem('currentDay', JSON.stringify(currentDay));
                         }
                     }
@@ -660,21 +659,13 @@
                 }
             } catch (error) {
                 console.error("Failed to add task:", error);
-                alert("Failed to add task. Please try again.");
+                alert("Failed to add task: " + error.stack);
 
                 // On error, reload from server to ensure we're in sync
                 localStorage.removeItem('currentDay');
                 loadTasks();
             } finally {
                 // Reset loading state
-                const taskFormSubmitBtn = document.querySelector('#taskForm button[type="submit"]');
-                const buttonText = taskFormSubmitBtn.querySelector('.button-text');
-                const spinner = taskFormSubmitBtn.querySelector('.spinner-border');
-
-                taskFormSubmitBtn.disabled = false;
-                buttonText.classList.remove('d-none');
-                spinner.classList.add('d-none');
-
                 requestFlags.addingTask = false;
             }
         }
@@ -703,16 +694,129 @@
             }
         });
 
-        document.getElementById('taskForm').addEventListener('submit', (e) => {
+        document.getElementById('taskForm').addEventListener('submit', async (e) => {
             e.preventDefault();
             const taskInput = document.getElementById('taskInput');
             const taskTitle = taskInput.value.trim();
+            const isPrivate = document.getElementById('taskPrivateToggle').checked;
 
             if (taskTitle) {
-                addTask(taskTitle);
+                const submitBtn = document.querySelector('#taskForm button[type="submit"]');
+                const btnText = submitBtn.querySelector('.button-text');
+                const spinner = submitBtn.querySelector('.spinner-border');
+
+                submitBtn.disabled = true;
+                btnText.classList.add('d-none');
+                spinner.classList.remove('d-none');
+                taskInput.disabled = true;
+
+                let predictedLevel = 'Medium';
+                try {
+                    const response = await fetch(`${TASK_BASE}/suggest-ai`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ title: taskTitle })
+                    });
+
+                    if (response.ok) {
+                        const data = await response.json();
+                        predictedLevel = data.level || 'Medium';
+                    }
+                } catch (error) {
+                    console.error("Failed to fetch difficulty automatically", error);
+                } finally {
+                    submitBtn.disabled = false;
+                    btnText.classList.remove('d-none');
+                    spinner.classList.add('d-none');
+                    taskInput.disabled = false;
+                }
+
+                discardAiSuggestion();
+                addTask(taskTitle, predictedLevel, [], isPrivate);
                 taskInput.value = '';
+                document.getElementById('taskPrivateToggle').checked = false;
             }
         });
+
+        let currentAiSuggestion = null;
+
+        async function handleAiSuggestion() {
+            const taskInput = document.getElementById('taskInput');
+            const taskTitle = taskInput.value.trim();
+            if (!taskTitle) {
+                alert('Please enter a task title first!');
+                return;
+            }
+
+            const aiBtn = document.getElementById('suggestAiBtn');
+            const btnText = aiBtn.querySelector('.button-text');
+            const spinner = aiBtn.querySelector('.spinner-border');
+
+            aiBtn.disabled = true;
+            btnText.classList.add('d-none');
+            spinner.classList.remove('d-none');
+
+            try {
+                const response = await fetch(`${TASK_BASE}/suggest-ai`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ title: taskTitle })
+                });
+
+                if (!response.ok) throw new Error('Failed to get suggestions');
+
+                const data = await response.json();
+                currentAiSuggestion = data;
+
+                // Show preview
+                document.getElementById('aiSuggestionPreview').classList.remove('d-none');
+
+                const badge = document.getElementById('aiLevelBadge');
+                badge.textContent = data.level;
+                badge.className = 'badge';
+                if (data.level === 'Easy') badge.classList.add('bg-success');
+                else if (data.level === 'Medium') badge.classList.add('bg-warning', 'text-dark');
+                else if (data.level === 'Hard') badge.classList.add('bg-danger');
+                else badge.classList.add('bg-secondary');
+
+                const subList = document.getElementById('aiSubtaskList');
+                subList.innerHTML = '';
+                if (data.subTasks && data.subTasks.length > 0) {
+                    data.subTasks.forEach(sub => {
+                        const li = document.createElement('li');
+                        li.className = 'list-group-item bg-dark text-light border-secondary py-1 px-2 mb-1 rounded';
+                        li.style.fontSize = '0.9rem';
+                        li.textContent = sub;
+                        subList.appendChild(li);
+                    });
+                }
+            } catch (error) {
+                console.error('AI Suggestion error:', error);
+                alert('Could not get AI suggestions. Please try again.');
+            } finally {
+                aiBtn.disabled = false;
+                btnText.classList.remove('d-none');
+                spinner.classList.add('d-none');
+            }
+        }
+
+        function acceptAiSuggestion() {
+            const taskInput = document.getElementById('taskInput');
+            const taskTitle = taskInput.value.trim();
+            const isPrivate = document.getElementById('taskPrivateToggle').checked;
+            if (taskTitle && currentAiSuggestion) {
+                addTask(taskTitle, currentAiSuggestion.level, currentAiSuggestion.subTasks || [], isPrivate);
+                discardAiSuggestion();
+                taskInput.value = '';
+                document.getElementById('taskPrivateToggle').checked = false;
+            }
+        }
+
+        function discardAiSuggestion() {
+            const preview = document.getElementById('aiSuggestionPreview');
+            if (preview) preview.classList.add('d-none');
+            currentAiSuggestion = null;
+        }
 
         async function loadLeaderboardData() {
             // Check if we're already loading leaderboard data to prevent multiple calls
@@ -854,15 +958,35 @@
 
                         const mainTask = document.createElement('div');
                         mainTask.className = 'd-flex justify-content-between align-items-center';
-                        
-                        const title = task.title || 'Untitled Task';
+
+                        const isOwnTask = userId === localStorage.getItem('userId');
+                        let titleText = task.title || 'Untitled Task';
+
+                        if (task.isPrivate && !isOwnTask) {
+                            titleText = '🔒 Private Task';
+                        }
+
                         const status = task.completed ? '✅' : '❌';
-                        
-                        mainTask.innerHTML = `<span>${title}</span> <span>${status}</span>`;
+
+                        const titleSpan = document.createElement('span');
+                        titleSpan.textContent = titleText;
+                        if (task.isPrivate && isOwnTask) {
+                            const lck = document.createElement('i');
+                            lck.className = 'bi bi-lock-fill text-muted ms-1';
+                            lck.style.fontSize = '0.8em';
+                            lck.title = 'Private Task';
+                            titleSpan.appendChild(lck);
+                        }
+
+                        const statusSpan = document.createElement('span');
+                        statusSpan.textContent = status;
+
+                        mainTask.appendChild(titleSpan);
+                        mainTask.appendChild(statusSpan);
                         listItem.appendChild(mainTask);
 
-                        // Show subtasks if they exist
-                        if (task.subTasks && task.subTasks.length > 0) {
+                        // Show subtasks if they exist and task is either public or owner is viewing
+                        if (task.subTasks && task.subTasks.length > 0 && (!task.isPrivate || isOwnTask)) {
                             const subList = document.createElement('ul');
                             subList.className = 'list-unstyled ms-4 mt-2 border-start ps-3';
                             subList.style.fontSize = '0.9rem';
@@ -871,7 +995,12 @@
                             task.subTasks.forEach(sub => {
                                 const subItem = document.createElement('li');
                                 subItem.className = 'd-flex justify-content-between';
-                                subItem.innerHTML = `<span>${sub.title}</span> <span>${sub.completed ? '✓' : '○'}</span>`;
+                                const subTextSpan = document.createElement('span');
+                                subTextSpan.textContent = sub.title;
+                                const subStatusSpan = document.createElement('span');
+                                subStatusSpan.textContent = sub.completed ? '✓' : '○';
+                                subItem.appendChild(subTextSpan);
+                                subItem.appendChild(subStatusSpan);
                                 subList.appendChild(subItem);
                             });
                             listItem.appendChild(subList);
