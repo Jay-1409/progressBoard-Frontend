@@ -54,16 +54,17 @@
             color: var(--text-primary);
         }
 
-        .form-floating > label {
+        .form-floating>label {
             color: var(--text-muted);
         }
 
-        .form-floating > .form-control:focus ~ label,
-        .form-floating > .form-control:not(:placeholder-shown) ~ label {
+        .form-floating>.form-control:focus~label,
+        .form-floating>.form-control:not(:placeholder-shown)~label {
             color: var(--color-primary);
         }
 
-        .btn-signup, .btn-verify {
+        .btn-signup,
+        .btn-verify {
             width: 100%;
             padding: 0.8rem;
             font-size: 1.1rem;
@@ -102,7 +103,7 @@
             align-items: flex-start;
             gap: 0.5rem;
         }
-        
+
         .email-warning i {
             color: #F59E0B;
         }
@@ -165,8 +166,15 @@
         }
 
         @keyframes fadeIn {
-            from { opacity: 0; transform: translateY(10px); }
-            to { opacity: 1; transform: translateY(0); }
+            from {
+                opacity: 0;
+                transform: translateY(10px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
         }
     </style>
 </head>
@@ -180,15 +188,17 @@
     <div class="signup-container fade-in">
         <div class="signup-card">
             <div class="signup-logo">
-                <img src="./logo_wobg.png" alt="Progress Board Logo" style="width: 80px; height: auto; margin-bottom: 0.5rem; filter: drop-shadow(0 0 10px rgba(139, 92, 246, 0.5));">
+                <img src="./logo_wobg.png" alt="Progress Board Logo"
+                    style="width: 80px; height: auto; margin-bottom: 0.5rem; filter: drop-shadow(0 0 10px rgba(139, 92, 246, 0.5));">
                 <h2 id="formTitle">Create an Account</h2>
             </div>
-            
+
             <!-- Step 1: Registration Form -->
             <div id="stepRegistration" class="step-container active">
                 <form id="signupForm" onsubmit="event.preventDefault(); initiateSignup();">
                     <div class="form-floating mb-3">
-                        <input type="text" class="form-control glass-input" id="signupUsername" placeholder=" " required>
+                        <input type="text" class="form-control glass-input" id="signupUsername" placeholder=" "
+                            required>
                         <label for="signupUsername">Username</label>
                     </div>
 
@@ -196,22 +206,25 @@
                         <input type="email" class="form-control glass-input" id="signupEmail" placeholder=" " required>
                         <label for="signupEmail">Email address</label>
                     </div>
-                    
+
                     <div class="form-floating mb-4">
-                        <input type="password" class="form-control glass-input" id="signupPassword" placeholder=" " required>
+                        <input type="password" class="form-control glass-input" id="signupPassword" placeholder=" "
+                            required>
                         <label for="signupPassword">Password</label>
                     </div>
 
                     <div class="email-warning">
                         <i class="bi bi-info-circle-fill"></i>
-                        <span>Please enter a valid email address. You will need to verify it via a one-time password (OTP).</span>
+                        <span>Please enter a valid email address. You will need to verify it via a one-time password
+                            (OTP).</span>
                     </div>
 
                     <button id="signupSubmitBtn" type="submit" class="btn btn-primary btn-signup">
-                        <span id="signupSpinner" class="spinner-border spinner-border-sm d-none me-2" role="status" aria-hidden="true"></span>
+                        <span id="signupSpinner" class="spinner-border spinner-border-sm d-none me-2" role="status"
+                            aria-hidden="true"></span>
                         Continue
                     </button>
-                    
+
                     <div class="login-link">
                         Already have an account? <a href="login.html">Sign in</a>
                     </div>
@@ -220,9 +233,10 @@
 
             <!-- Step 2: OTP Verification Form -->
             <div id="stepVerification" class="step-container">
-                <p class="text-center text-muted mb-2">We've sent a verification code to <strong id="displayEmail" class="text-light"></strong></p>
+                <p class="text-center text-muted mb-2">We've sent a verification code to <strong id="displayEmail"
+                        class="text-light"></strong></p>
                 <p class="text-center text-muted small mb-4">Please check your spam folder if you can't find it.</p>
-                
+
                 <form id="otpVerificationForm" onsubmit="event.preventDefault(); verifyOtp();">
                     <div class="otp-input-container">
                         <input type="text" maxlength="1" class="form-control otp-input" id="otp1" required>
@@ -230,19 +244,22 @@
                         <input type="text" maxlength="1" class="form-control otp-input" id="otp3" required>
                         <input type="text" maxlength="1" class="form-control otp-input" id="otp4" required>
                     </div>
-                    
+
                     <div class="resend-timer-container">
                         <span id="resendTimerContainer">Resend code in <span id="resendTimer">60</span>s</span>
-                        <a id="resendOtpBtn" class="resend-otp" style="display: none;" onclick="resendOtp()">Resend OTP</a>
+                        <a id="resendOtpBtn" class="resend-otp" style="display: none;" onclick="resendOtp()">Resend
+                            OTP</a>
                     </div>
 
                     <button id="verifyOtpBtn" type="submit" class="btn btn-success btn-verify">
-                        <span id="otpVerificationSpinner" class="spinner-border spinner-border-sm d-none me-2" role="status" aria-hidden="true"></span>
+                        <span id="otpVerificationSpinner" class="spinner-border spinner-border-sm d-none me-2"
+                            role="status" aria-hidden="true"></span>
                         Verify Account
                     </button>
 
                     <div class="login-link mt-2">
-                        <a href="#" onclick="showRegistrationStep(); return false;"><i class="bi bi-arrow-left me-1"></i> Change email address</a>
+                        <a href="#" onclick="showRegistrationStep(); return false;"><i
+                                class="bi bi-arrow-left me-1"></i> Change email address</a>
                     </div>
                 </form>
             </div>
@@ -255,6 +272,7 @@
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
     <script>
         const BASE_URL = 'https://progress-board-1409-20917d01.koyeb.app';
+        //const BASE_URL = 'http://localhost:8081';
         let isSigningUp = false;
         let isVerifyingOtp = false;
         let resendOtpTimer = null;
@@ -274,11 +292,11 @@
             alertDiv.id = alertId;
             alertDiv.className = `alert alert-${type} alert-dismissible fade show`;
             alertDiv.role = 'alert';
-            
+
             // Fix XSS vulnerability: escape message text safely
             const msgSpan = document.createElement('span');
             msgSpan.textContent = message;
-            
+
             alertDiv.innerHTML = `
                 ${msgSpan.outerHTML}
                 <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
@@ -526,4 +544,5 @@
         }
     </script>
 </body>
+
 </html>
