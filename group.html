@@ -607,13 +607,18 @@
                 const taskFormSubmitBtn = document.querySelector('#taskForm button[type="submit"]');
                 const buttonText = taskFormSubmitBtn.querySelector('.button-text');
 
-                // Create new task
+                // Create new task with weights if provided
                 const newTask = {
                     title: taskTitle,
                     completed: false,
                     level: level,
                     isPrivate: isPrivate,
-                    subTasks: subTasks.map(subTitle => ({ title: subTitle, completed: false }))
+                    subTasks: subTasks.map(sub => {
+                        if (typeof sub === 'string') {
+                            return { title: sub, completed: false, weight: 0 };
+                        }
+                        return { title: sub.title, completed: false, weight: sub.weight || 0 };
+                    })
                 };
 
                 // Add task to current day
@@ -784,9 +789,18 @@
                 if (data.subTasks && data.subTasks.length > 0) {
                     data.subTasks.forEach(sub => {
                         const li = document.createElement('li');
-                        li.className = 'list-group-item bg-dark text-light border-secondary py-1 px-2 mb-1 rounded';
+                        li.className = 'list-group-item bg-dark text-light border-secondary py-1 px-2 mb-1 rounded d-flex justify-content-between';
                         li.style.fontSize = '0.9rem';
-                        li.textContent = sub;
+
+                        const titleSpan = document.createElement('span');
+                        titleSpan.textContent = sub.title;
+
+                        const weightSpan = document.createElement('span');
+                        weightSpan.className = 'text-muted';
+                        weightSpan.textContent = `(W: ${Math.round(sub.weight * 100)}%)`;
+                        weightSpan.style.fontSize = '0.8rem';
+
+                        li.append(titleSpan, weightSpan);
                         subList.appendChild(li);
                     });
                 }
@@ -856,21 +870,28 @@
 
                 sortedUsers.forEach((userData, index) => {
                     const li = document.createElement('li');
-                    li.className = 'list-group-item d-flex justify-content-between align-items-center';
+                    li.className = 'list-group-item d-flex justify-content-between align-items-center leaderboard-item';
 
                     let rankingIndicator = '';
                     if (index === 0) rankingIndicator = '🥇 ';
                     else if (index === 1) rankingIndicator = '🥈 ';
                     else if (index === 2) rankingIndicator = '🥉 ';
 
+                    // Always show streak, even if 0
+                    const streakCount = userData.streak || 0;
+                    const streakHtml = `<span class="streak-badge" title="Daily Streak: ${streakCount} days"><i class="bi bi-fire"></i> ${streakCount}</span>`;
+
                     li.innerHTML = `
-                <span>${rankingIndicator}${userData.userName || 'Anonymous User'}</span>
-                <div class="d-flex align-items-center">
-                    <div class="progress" style="width: 100px; height: 10px; margin-right: 10px; display: inline-block; vertical-align: middle;">
+                <div class="leaderboard-name" title="${userData.userName || 'Anonymous User'}" style="flex: 1; min-width: 80px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
+                    <span>${rankingIndicator}${userData.userName || 'Anonymous User'}</span>
+                </div>
+                <div class="leaderboard-stats">
+                    <div class="progress" style="width: 60px; height: 8px; display: inline-block;">
                         <div class="progress-bar bg-success" role="progressbar" style="width: ${userData.userProgress}%"></div>
                     </div>
                     <span class="badge bg-primary rounded-pill">${userData.userProgress.toFixed(0)}%</span>
-                    <button class="btn btn-sm btn-outline-info ms-2 view-tasks-btn" data-user-id="${userData.userId}" data-user-name="${userData.userName || 'User'}">View Tasks</button>
+                    ${streakHtml}
+                    <button class="btn btn-sm btn-outline-info view-tasks-btn" data-user-id="${userData.userId}" data-user-name="${userData.userName || 'User'}">View Tasks</button>
                 </div>
             `;
                     leaderboardList.appendChild(li);

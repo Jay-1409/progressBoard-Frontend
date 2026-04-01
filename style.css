@@ -692,7 +692,7 @@ input.form-control::placeholder {
 
 @media (min-width: 992px) {
   .main-content {
-    grid-template-columns: 1fr 2fr !important;
+    grid-template-columns: 2fr 3fr !important;
   }
 }
 
@@ -789,6 +789,48 @@ input.form-control::placeholder {
   transition: var(--transition);
 }
 .list-group-item:hover { background: rgba(255, 255, 255, 0.06) !important; }
+
+/* Streak Badge */
+.streak-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25rem;
+    padding: 0.2rem 0.5rem;
+    background: rgba(245, 158, 11, 0.15);
+    border: 1px solid rgba(245, 158, 11, 0.3);
+    border-radius: 12px;
+    color: #F59E0B;
+    font-size: 0.8rem;
+    font-weight: 700;
+    margin: 0 0.5rem;
+    vertical-align: middle;
+}
+
+.streak-badge i {
+    font-size: 0.9rem;
+    filter: drop-shadow(0 0 5px rgba(245, 158, 11, 0.5));
+}
+
+.leaderboard-item {
+    padding: 0.8rem 1rem !important;
+}
+
+.leaderboard-name {
+    flex: 1;
+    min-width: 100px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    margin-right: 0.75rem;
+    font-weight: 600;
+}
+
+.leaderboard-stats {
+    display: flex;
+    align-items: center;
+    flex-shrink: 0;
+    gap: 0.5rem;
+}
 
 .loading-overlay {
   background-color: rgba(11, 15, 25, 0.7) !important;
