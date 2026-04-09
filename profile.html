@@ -555,28 +555,27 @@
 
             document.getElementById('valUserId').textContent = userId;
 
-            // Fetch name
             try {
+                // Fetch name
                 const nameRes = await fetch(`${BASE_URL}/user/get-userid/${userId}`);
                 const name = await nameRes.text();
 
-                // Try to fetch email (best effort)
-                let email = localStorage.getItem('userEmail') || '';
+                // Fetch email
+                let email = '';
                 try {
                     const emailRes = await fetch(`${BASE_URL}/user/get-email/${userId}`);
                     if (emailRes.ok) {
                         email = await emailRes.text();
-                        localStorage.setItem('userEmail', email);
                     }
-                } catch { /* email endpoint may not exist yet */ }
+                } catch (err) { console.error('Email fetch failed:', err); }
 
                 renderProfile(name, email, userId);
                 localStorage.setItem('userName', name);
+                if (email) localStorage.setItem('userEmail', email);
 
             } catch (err) {
                 console.error('Failed to load profile:', err);
                 showToast('Failed to load profile data.', true);
-                // Still render from cache
                 renderProfile(
                     localStorage.getItem('userName') || 'Unknown',
                     localStorage.getItem('userEmail') || '',
@@ -591,28 +590,17 @@
             if (!userId) return;
 
             try {
-                const res = await fetch(`${BASE_URL}/group/get-user-groups/${userId}`);
+                const res = await fetch(`${BASE_URL}/user/get-stats/${userId}`);
                 if (res.ok) {
-                    const groups = await res.json();
-                    document.getElementById('statGroups').textContent = groups.length;
-
-                    // Aggregate tasks across groups
-                    let completed = 0, pending = 0;
-                    groups.forEach(g => {
-                        const tasks = g.tasks || g.todoList || [];
-                        tasks.forEach(t => {
-                            if (t.status === 'DONE' || t.completed === true) completed++;
-                            else pending++;
-                        });
-                    });
-                    document.getElementById('statTasks').textContent = completed;
-                    document.getElementById('statPending').textContent = pending;
+                    const stats = await res.json();
+                    document.getElementById('statGroups').textContent = stats.groupsJoined || '0';
+                    document.getElementById('statTasks').textContent = stats.tasksCompleted || '0';
+                    document.getElementById('statPending').textContent = stats.tasksPending || '0';
+                    document.getElementById('statStreak').textContent = stats.streak || '0';
                 }
-            } catch { /* silently fail */ }
-
-            // Streak placeholder from localStorage
-            const streak = localStorage.getItem('userStreak') || '1';
-            document.getElementById('statStreak').textContent = streak;
+            } catch (err) {
+                console.error('Failed to load stats:', err);
+            }
         }
 
         // ── Edit-in-place ──────────────────────────────────────
@@ -667,20 +655,15 @@
                         localStorage.setItem('userName', newValue);
                         // Update avatar + hero name
                         document.getElementById('profileNameDisplay').textContent = newValue;
-                        document.getElementById('avatarCircle').textContent = getInitials(newValue);
+                        const initialEl = document.getElementById('avatarCircle');
+                        initialEl.textContent = getInitials(newValue);
                         showToast('Name updated successfully!');
                     } else {
-                        // Update locally even if API fails (graceful)
-                        val.textContent = newValue;
-                        localStorage.setItem('userName', newValue);
-                        document.getElementById('profileNameDisplay').textContent = newValue;
-                        document.getElementById('avatarCircle').textContent = getInitials(newValue);
-                        showToast('Saved locally (API endpoint may not exist yet).', true);
+                        showToast('Failed to update name on server.', true);
                     }
-                } catch {
-                    val.textContent = newValue;
-                    localStorage.setItem('userName', newValue);
-                    showToast('Saved locally.', true);
+                } catch (err) {
+                    console.error('Update failed:', err);
+                    showToast('Network error while updating name.', true);
                 }
             }
 
@@ -704,9 +687,25 @@
         }
 
         // ── Delete account ─────────────────────────────────────
-        function confirmDeleteAccount() {
+        async function confirmDeleteAccount() {
             if (confirm('⚠️ Are you sure you want to delete your account? This action is permanent and cannot be undone.')) {
-                showToast('Account deletion coming soon!', true);
+                const userId = localStorage.getItem('userId');
+                try {
+                    const res = await fetch(`${BASE_URL}/user/id/${userId}`, {
+                        method: 'DELETE'
+                    });
+                    if (res.ok) {
+                        showToast('Account deleted successfully. Redirecting...');
+                        setTimeout(() => {
+                            localStorage.clear();
+                            window.location.href = 'index.html';
+                        }, 2000);
+                    } else {
+                        showToast('Failed to delete account.', true);
+                    }
+                } catch (err) {
+                    showToast('Error deleting account.', true);
+                }
             }
         }
 
