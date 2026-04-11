@@ -8,6 +8,7 @@
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css" rel="stylesheet">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
     <link rel="stylesheet" href="style.css">
 </head>
 
@@ -70,7 +71,7 @@
                     </div>
                 </div>
             </div>
-            <div class="task-sidebar position-relative">
+            <div class="task-sidebar">
                 <h5>Your Tasks</h5>
                 <div id="currentDayInfo" class="mb-3"></div>
                 <div id="taskList"></div>
@@ -107,7 +108,7 @@
                                 aria-hidden="true"></span>
                         </button>
                     </div>
-                    <!-- AI suggestion preview container (hidden by default) -->
+                    <!-- AI suggestion preview container -->
                     <div id="aiSuggestionPreview" class="d-none mt-2 p-3 border rounded bg-dark border-secondary">
                         <h6 class="text-info d-flex justify-content-between align-items-center mb-0">
                             AI Suggested Plan
@@ -116,7 +117,8 @@
                         <ul id="aiSubtaskList" class="list-group list-group-flush mb-3 mt-2"></ul>
                         <div class="d-flex gap-2">
                             <button type="button" class="btn btn-sm btn-success w-100"
-                                onclick="acceptAiSuggestion()">Accept Plan</button>
+                                onclick="acceptAiSuggestion()">Accept
+                                Plan</button>
                             <button type="button" class="btn btn-sm btn-outline-light w-100"
                                 onclick="discardAiSuggestion()">Discard</button>
                         </div>
@@ -127,6 +129,14 @@
                     <div class="spinner-border text-light" role="status">
                         <span class="visually-hidden">Loading...</span>
                     </div>
+                </div>
+            </div>
+
+            <!-- Activity Feed Inside Main Content -->
+            <div class="activity-feed glass-card p-4">
+                <h5 class="border-bottom pb-3 mb-3"><i class="fa-solid fa-rss me-2 text-primary"></i>Activity Feed</h5>
+                <div id="activityList" class="activity-list" style="max-height: 500px; overflow-y: auto;">
+                    <div class="text-muted small">Loading activity...</div>
                 </div>
             </div>
         </div>
@@ -157,12 +167,22 @@
 
         const TASK_BASE = 'https://progress-board-1409-20917d01.koyeb.app/task';
         const GROUP_BASE = 'https://progress-board-1409-20917d01.koyeb.app/group';
+        const ACTIVITY_BASE = 'https://progress-board-1409-20917d01.koyeb.app/activity';
         //const TASK_BASE = 'http://localhost:8081/task';
         //const GROUP_BASE = 'http://localhost:8081/group';
+        //const ACTIVITY_BASE = 'http://localhost:8081/activity';
         const userId = localStorage.getItem('userId');
 
         // Track current day
         let currentDay = null;
+
+        function getLocalDateString() {
+            const now = new Date();
+            const year = now.getFullYear();
+            const month = String(now.getMonth() + 1).padStart(2, '0');
+            const day = String(now.getDate()).padStart(2, '0');
+            return `${year}-${month}-${day}`;
+        }
 
         // Request throttling flags
         const requestFlags = {
@@ -233,8 +253,9 @@
 
         async function checkIfTodayExists() {
             try {
+                const today = getLocalDateString();
                 const convertedUserId = convertToObjectId(userId);
-                const response = await fetch(`${TASK_BASE}/is-today-present/${convertedUserId}`);
+                const response = await fetch(`${TASK_BASE}/is-today-present/${convertedUserId}?date=${today}`);
 
                 if (!response.ok) {
                     throw new Error('Failed to check if today exists: ' + response.status);
@@ -275,8 +296,9 @@
                 const todayExists = await checkIfTodayExists();
 
                 // Always fetch from server to ensure fresh data on refresh
+                const today = getLocalDateString();
                 const convertedUserId = convertToObjectId(userId);
-                const res = await fetch(`${TASK_BASE}/get-user-tasks/${convertedUserId}`);
+                const res = await fetch(`${TASK_BASE}/get-user-tasks/${convertedUserId}?date=${today}`);
 
                 if (res.ok) {
                     const text = await res.text();
@@ -487,7 +509,7 @@
 
                 // Ensure dateFor is present for backend matching
                 if (!currentDay.dateFor) {
-                    currentDay.dateFor = new Date().toISOString().split('T')[0];
+                    currentDay.dateFor = getLocalDateString();
                 }
 
                 const convertedUserId = convertToObjectId(userId);
@@ -557,7 +579,7 @@
                 requestFlags.addingDay = true;
                 setButtonLoading('addDayBtn', true);
 
-                const today = new Date().toISOString().split('T')[0];
+                const today = getLocalDateString();
                 const newDay = {
                     userId: userId,
                     dateFor: today,
@@ -856,7 +878,6 @@
                 if (!response.ok) throw new Error(`API error: ${response.status}`);
 
                 const groupUserData = await response.json();
-
                 // Sort users by progress descending
                 const sortedUsers = groupUserData.sort((a, b) => b.userProgress - a.userProgress);
 
@@ -868,33 +889,93 @@
                     return;
                 }
 
+                // Find current user's role to determine if they can nudge
+                const currentUserInfo = sortedUsers.find(u => u.userId === userId);
+                const canNudge = currentUserInfo && (currentUserInfo.role === 'Owner' || currentUserInfo.role === 'Admin');
+
                 sortedUsers.forEach((userData, index) => {
                     const li = document.createElement('li');
-                    li.className = 'list-group-item d-flex justify-content-between align-items-center leaderboard-item';
+                    li.className = 'list-group-item leaderboard-item p-3 mb-2';
 
                     let rankingIndicator = '';
                     if (index === 0) rankingIndicator = '🥇 ';
                     else if (index === 1) rankingIndicator = '🥈 ';
                     else if (index === 2) rankingIndicator = '🥉 ';
 
-                    // Always show streak, even if 0
+                    // Role Badge & Leader Icon
+                    let roleHtml = '';
+                    let leaderIcon = '';
+                    if (userData.role === 'Owner') {
+                        roleHtml = '<span class="badge bg-primary ms-1" style="font-size: 0.6rem;">Owner</span>';
+                        leaderIcon = '<i class="fa-solid fa-crown text-warning me-1" title="Leader"></i>';
+                    } else if (userData.role === 'Admin') {
+                        roleHtml = '<span class="badge bg-info ms-1" style="font-size: 0.6rem;">Admin</span>';
+                    }
+
+                    // Admin Actions
+                    let adminActionsHtml = '';
+                    if (userData.userId !== userId) {
+                        // Owner can do anything
+                        if (currentUserInfo && currentUserInfo.role === 'Owner') {
+                            if (userData.role === 'Member') {
+                                adminActionsHtml += `<button class="btn btn-sm btn-outline-info ms-1 promote-admin-btn" data-target-id="${userData.userId}" data-target-name="${userData.userName}" title="Promote to Admin"><i class="fa-solid fa-shield-halved"></i></button>`;
+                            }
+                            adminActionsHtml += `<button class="btn btn-sm btn-outline-danger ms-1 remove-member-btn" data-target-id="${userData.userId}" data-target-name="${userData.userName}" title="Remove Member"><i class="fa-solid fa-user-minus"></i></button>`;
+                        } else if (currentUserInfo && currentUserInfo.role === 'Admin') {
+                            if (userData.role === 'Member') {
+                                adminActionsHtml += `<button class="btn btn-sm btn-outline-danger ms-1 remove-member-btn" data-target-id="${userData.userId}" data-target-name="${userData.userName}" title="Remove Member"><i class="fa-solid fa-user-minus"></i></button>`;
+                            }
+                        }
+                    }
+
+                    // Nudge Button
+                    let nudgeBtnHtml = '';
+                    if (canNudge && userData.userId !== userId && userData.userProgress < 10) {
+                        nudgeBtnHtml = `<button class="btn btn-sm btn-outline-warning ms-1 nudge-btn" data-target-id="${userData.userId}" data-target-name="${userData.userName}" title="Send Nudge"><i class="fa-solid fa-bell"></i></button>`;
+                    }
+
                     const streakCount = userData.streak || 0;
-                    const streakHtml = `<span class="streak-badge" title="Daily Streak: ${streakCount} days"><i class="bi bi-fire"></i> ${streakCount}</span>`;
+                    const streakHtml = `<span class="streak-badge ms-2" title="Daily Streak: ${streakCount} days"><i class="bi bi-fire"></i> ${streakCount}</span>`;
 
                     li.innerHTML = `
-                <div class="leaderboard-name" title="${userData.userName || 'Anonymous User'}" style="flex: 1; min-width: 80px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
-                    <span>${rankingIndicator}${userData.userName || 'Anonymous User'}</span>
-                </div>
-                <div class="leaderboard-stats">
-                    <div class="progress" style="width: 60px; height: 8px; display: inline-block;">
-                        <div class="progress-bar bg-success" role="progressbar" style="width: ${userData.userProgress}%"></div>
-                    </div>
-                    <span class="badge bg-primary rounded-pill">${userData.userProgress.toFixed(0)}%</span>
-                    ${streakHtml}
-                    <button class="btn btn-sm btn-outline-info view-tasks-btn" data-user-id="${userData.userId}" data-user-name="${userData.userName || 'User'}">View Tasks</button>
-                </div>
-            `;
+                        <div class="leaderboard-top-row d-flex justify-content-between align-items-center mb-2">
+                             <div class="d-flex align-items-center">
+                                <a href="profile.html?id=${userData.userId}" class="fw-bold text-light text-decoration-none user-link">${rankingIndicator}${leaderIcon}${userData.userName || 'Anonymous'}</a>
+                                ${roleHtml}
+                                ${streakHtml}
+                             </div>
+                        </div>
+                        <div class="leaderboard-actions-row d-flex flex-wrap justify-content-between align-items-center gap-2 mt-2">
+                            <div class="d-flex align-items-center gap-2 flex-grow-1 mb-1" style="min-width: 120px;">
+                                <div class="progress flex-grow-1" style="height: 6px; background: rgba(255,255,255,0.05); min-width: 50px;">
+                                    <div class="progress-bar bg-success" role="progressbar" style="width: ${userData.userProgress}%"></div>
+                                </div>
+                                <span class="badge bg-primary bg-opacity-25 text-primary border border-primary border-opacity-25 rounded-pill" style="font-size: 0.7rem;">${userData.userProgress.toFixed(0)}%</span>
+                            </div>
+                            <div class="d-flex flex-wrap gap-1 mb-1">
+                                <button class="btn btn-sm btn-outline-info view-tasks-btn p-1 px-2" data-user-id="${userData.userId}" data-user-name="${userData.userName || 'User'}"><i class="fa-solid fa-eye me-1"></i>Tasks</button>
+                                ${nudgeBtnHtml}
+                                ${adminActionsHtml}
+                            </div>
+                        </div>
+                    `;
                     leaderboardList.appendChild(li);
+                });
+
+                // Add event listeners for new buttons
+                document.querySelectorAll('.promote-admin-btn').forEach(btn => {
+                    btn.addEventListener('click', () => promoteMember(btn.dataset.targetId, btn.dataset.targetName));
+                });
+                document.querySelectorAll('.remove-member-btn').forEach(btn => {
+                    btn.addEventListener('click', () => removeUser(btn.dataset.targetId, btn.dataset.targetName));
+                });
+
+                // Add event listeners for Nudge buttons
+                document.querySelectorAll('.nudge-btn').forEach(btn => {
+                    btn.addEventListener('click', (e) => {
+                        e.stopPropagation();
+                        nudgeUser(btn.dataset.targetId, btn.dataset.targetName);
+                    });
                 });
 
                 // Add event listeners to the "View Tasks" buttons
@@ -1097,14 +1178,289 @@
             loadGroups();
             loadTasks();
             loadLeaderboardData();
+            loadActivityFeed();
         });
+
+        async function loadActivityFeed() {
+            const params = new URLSearchParams(window.location.search);
+            const groupId = params.get('id');
+            if (!groupId) return;
+
+            try {
+                const res = await fetch(`${ACTIVITY_BASE}/group/${groupId}`);
+                const activities = await res.json();
+                renderActivities(activities);
+            } catch (err) {
+                console.error("Failed to load activity feed:", err);
+            }
+        }
+
+        function renderActivities(activities) {
+            const container = document.getElementById('activityList');
+            if (!activities || activities.length === 0) {
+                container.innerHTML = '<div class="text-white-50 small p-3">No recent activity. Be the first to start!</div>';
+                return;
+            }
+
+            container.innerHTML = '';
+            activities.forEach((act, index) => {
+                const item = document.createElement('div');
+
+                let typeClass = '';
+                let iconClass = '';
+                let iconColor = '';
+
+                switch (act.type) {
+                    case 'TASK_COMPLETE':
+                        typeClass = 'type-task';
+                        iconClass = 'fa-solid fa-circle-check';
+                        iconColor = '#10b981';
+                        break;
+                    case 'DAILY_COMPLETE':
+                        typeClass = 'type-daily';
+                        iconClass = 'fa-solid fa-star';
+                        iconColor = '#f59e0b';
+                        break;
+                    case 'LEVEL_UP':
+                        typeClass = 'type-level';
+                        iconClass = 'fa-solid fa-rocket';
+                        iconColor = '#3b82f6';
+                        break;
+                    case 'MEMBER_JOIN':
+                        typeClass = 'type-join';
+                        iconClass = 'fa-solid fa-user-plus';
+                        iconColor = '#8b5cf6';
+                        break;
+                    case 'BADGE_EARNED':
+                        typeClass = 'type-badge';
+                        iconClass = 'fa-solid fa-award';
+                        iconColor = '#ec4899';
+                        break;
+                    default:
+                        typeClass = '';
+                        iconClass = 'fa-solid fa-bell';
+                        iconColor = '#6b7280';
+                }
+
+                item.className = `activity-card ${typeClass}`;
+                // Staggered animation
+                item.style.animationDelay = `${index * 0.1}s`;
+
+                const time = new Date(act.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+
+                item.innerHTML = `
+                    <div class="d-flex gap-3">
+                        <div class="activity-icon" style="color: ${iconColor}; font-size: 1.1rem;">
+                            <i class="${iconClass}"></i>
+                        </div>
+                        <div class="flex-grow-1">
+                            <div class="d-flex justify-content-between align-items-center mb-1">
+                                <span class="username">${act.username}</span>
+                                <span class="time">${time}</span>
+                            </div>
+                            <div class="message">${act.message}</div>
+                        </div>
+                    </div>
+                `;
+                container.appendChild(item);
+            });
+        }
+        async function promoteMember(targetId, targetName) {
+            if (!confirm(`Are you sure you want to promote ${targetName} to Admin?`)) return;
+            const groupId = localStorage.getItem("groupId");
+            try {
+                const res = await fetch(`${GROUP_BASE}/promote-admin/${groupId}/${targetId}?ownerId=${userId}`, {
+                    method: 'PUT'
+                });
+                if (res.ok) {
+                    alert(`${targetName} is now an Admin!`);
+                    loadLeaderboardData();
+                } else alert('Failed to promote user');
+            } catch (err) { console.error(err); }
+        }
+
+        async function removeUser(targetId, targetName) {
+            if (!confirm(`Are you sure you want to remove ${targetName} from the group?`)) return;
+            const groupId = localStorage.getItem("groupId");
+            try {
+                const res = await fetch(`${GROUP_BASE}/remove-member/${groupId}/${targetId}?requesterId=${userId}`, {
+                    method: 'DELETE'
+                });
+                if (res.ok) {
+                    alert(`${targetName} has been removed.`);
+                    loadLeaderboardData();
+                } else alert('Failed to remove user');
+            } catch (err) { console.error(err); }
+        }
+
         window.addEventListener('load', () => {
             const loader = document.getElementById('pageLoader');
             loader.style.opacity = 0;
             setTimeout(() => loader.style.display = 'none', 800);
         });
 
+        async function nudgeUser(targetId, targetName) {
+            if (!confirm(`Send a nudge to ${targetName}?`)) return;
 
+            const senderName = localStorage.getItem('userName') || 'A leader';
+            const NOTIFICATION_BASE = ACTIVITY_BASE.replace('activity', 'notification');
+            const notification = {
+                recipientId: targetId,
+                senderName: senderName,
+                message: `${senderName} is encouraging you to complete your tasks for today!`,
+                type: 'REMINDER'
+            };
+
+            try {
+                const res = await fetch(`${NOTIFICATION_BASE}/send`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(notification)
+                });
+                if (res.ok) alert(`Nudge sent to ${targetName}!`);
+                else alert('Failed to send nudge');
+            } catch (err) {
+                console.error(err);
+            }
+        }
+
+
+    </script>
+
+    <!-- Floating Chat Button -->
+    <div id="chatFab" class="chat-fab" onclick="toggleChat()">
+        <i class="fa-solid fa-comments"></i>
+        <span id="chatBadge" class="chat-badge d-none"></span>
+    </div>
+
+    <!-- Chat Window -->
+    <div id="chatWindow" class="chat-window d-none">
+        <div class="chat-header">
+            <div class="d-flex align-items-center gap-2">
+                <i class="fa-solid fa-people-group text-primary"></i>
+                <h6 class="mb-0 text-white">Group Chat</h6>
+            </div>
+            <button class="btn btn-sm btn-link text-white text-decoration-none" onclick="toggleChat()">
+                <i class="fa-solid fa-minus"></i>
+            </button>
+        </div>
+        <div id="chatMessages" class="chat-messages">
+            <!-- Messages will be loaded here -->
+        </div>
+        <form id="chatForm" class="chat-input-area">
+            <input type="text" id="chatInput" class="form-control" placeholder="Type a message..." autocomplete="off">
+            <button type="submit" class="btn btn-primary" id="chatSendBtn">
+                <i class="fa-solid fa-paper-plane"></i>
+            </button>
+        </form>
+    </div>
+
+    <script>
+        const CHAT_BASE = 'http://localhost:8081/chat';
+        let chatPollingInterval = null;
+        let lastMessageCount = 0;
+
+        function toggleChat() {
+            const chatWin = document.getElementById('chatWindow');
+            const chatBadge = document.getElementById('chatBadge');
+
+            if (chatWin.classList.contains('d-none')) {
+                chatWin.classList.remove('d-none');
+                chatBadge.classList.add('d-none');
+                loadChatMessages(true); // Force scroll on open
+                startChatPolling();
+                setTimeout(() => document.getElementById('chatInput').focus(), 300);
+            } else {
+                chatWin.classList.add('d-none');
+                stopChatPolling();
+            }
+        }
+
+        async function loadChatMessages(forceScroll = false) {
+            const params = new URLSearchParams(window.location.search);
+            const groupId = params.get('id');
+            if (!groupId) return;
+
+            try {
+                const res = await fetch(`${CHAT_BASE}/group/${groupId}`);
+                const messages = await res.json();
+                renderChatMessages(messages);
+
+                if (messages.length > lastMessageCount || forceScroll) {
+                    scrollToBottom();
+                    lastMessageCount = messages.length;
+                }
+            } catch (err) {
+                console.error("Chat fetch error:", err);
+            }
+        }
+
+        function renderChatMessages(messages) {
+            const container = document.getElementById('chatMessages');
+            container.innerHTML = '';
+
+            if (messages.length === 0) {
+                container.innerHTML = '<div class="text-center text-white-50 mt-5 small">No messages yet. Say hi! 👋</div>';
+                return;
+            }
+
+            messages.forEach(msg => {
+                const isMe = msg.userId === userId;
+                const msgDiv = document.createElement('div');
+                msgDiv.className = `message-bubble ${isMe ? 'me' : 'others'}`;
+
+                const time = new Date(msg.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+
+                msgDiv.innerHTML = `
+                    <div class="msg-sender">${isMe ? 'You' : msg.username}</div>
+                    <div class="msg-text">${msg.message}</div>
+                    <div class="msg-time">${time}</div>
+                `;
+                container.appendChild(msgDiv);
+            });
+        }
+
+        document.getElementById('chatForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const input = document.getElementById('chatInput');
+            const message = input.value.trim();
+            if (!message) return;
+
+            const params = new URLSearchParams(window.location.search);
+            const groupId = params.get('id');
+            const username = localStorage.getItem('userName') || 'Anonymous';
+
+            input.value = '';
+
+            try {
+                const res = await fetch(`${CHAT_BASE}/send`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ userId, username, groupId, message })
+                });
+
+                if (res.ok) {
+                    loadChatMessages(true);
+                }
+            } catch (err) {
+                console.error("Chat send error:", err);
+            }
+        });
+
+        function startChatPolling() {
+            if (chatPollingInterval) clearInterval(chatPollingInterval);
+            chatPollingInterval = setInterval(() => loadChatMessages(false), 3000);
+        }
+
+        function stopChatPolling() {
+            if (chatPollingInterval) clearInterval(chatPollingInterval);
+            chatPollingInterval = null;
+        }
+
+        function scrollToBottom() {
+            const container = document.getElementById('chatMessages');
+            container.scrollTop = container.scrollHeight;
+        }
     </script>
 </body>
 

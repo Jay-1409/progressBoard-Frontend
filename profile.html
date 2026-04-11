@@ -7,6 +7,7 @@
     <title>My Profile - Progress Board</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
     <link rel="icon" type="image/png" href="logo_wobg.png">
     <link rel="stylesheet" href="style.css">
     <style>
@@ -361,6 +362,16 @@
                 <span class="stat-num" id="statStreak">—</span>
                 <span class="stat-lbl">Day Streak</span>
             </div>
+            <div class="stat-box">
+                <div class="stat-icon" style="color:#8b5cf6;">✨</div>
+                <span class="stat-num" id="statXP">—</span>
+                <span class="stat-lbl">Total XP</span>
+            </div>
+            <div class="stat-box">
+                <div class="stat-icon" style="color:#06b6d4;">🎖️</div>
+                <span class="stat-num" id="statLevel">—</span>
+                <span class="stat-lbl">User Level</span>
+            </div>
         </div>
 
         <!-- ── Personal Information ── -->
@@ -399,15 +410,22 @@
                 </div>
             </div>
 
-            <!-- Member Since -->
             <div class="profile-field">
                 <span class="field-label">Member since</span>
                 <span class="field-value" id="valSince">—</span>
             </div>
         </div>
 
-        <!-- ── Account ── -->
+        <!-- ── Badges ── -->
         <div class="info-card">
+            <div class="info-card-title"><i class="fa-solid fa-award"></i> Achievement Badges</div>
+            <div id="badgesContainer" class="d-flex flex-wrap gap-3 mt-2">
+                <div class="text-muted small">No badges earned yet. Complete tasks to unlock!</div>
+            </div>
+        </div>
+
+        <!-- ── Account ── -->
+        <div class="info-card" id="accountSection">
             <div class="info-card-title"><i class="bi bi-shield-lock-fill"></i> Account</div>
 
             <div class="profile-field">
@@ -425,8 +443,8 @@
                 <span class="field-label">Password</span>
                 <span class="field-value">••••••••••</span>
                 <div class="field-actions">
-                    <button class="btn-icon" title="Change password (coming soon)"
-                        onclick="showToast('Password change coming soon!', true)">
+                    <button class="btn-icon" title="Change password" data-bs-toggle="modal"
+                        data-bs-target="#passwordModal">
                         <i class="bi bi-pencil"></i>
                     </button>
                 </div>
@@ -453,6 +471,45 @@
 
     </div>
 
+    <!-- Change Password Modal -->
+    <div class="modal fade" id="passwordModal" tabindex="-1" aria-labelledby="passwordModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content glass-card border-0"
+                style="background: var(--bg-card); backdrop-filter: blur(12px); border: 1px solid var(--glass-border) !important; color: white;">
+                <div class="modal-header border-0 pb-0">
+                    <h5 class="modal-title" id="passwordModalLabel"><i class="bi bi-shield-lock me-2"
+                            style="color: var(--color-primary);"></i>Change Password</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"
+                        aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <form id="passwordForm">
+                        <div class="mb-3">
+                            <label for="oldPass" class="form-label small text-muted">Current Password</label>
+                            <input type="password" class="form-control glass-input" id="oldPass" required
+                                placeholder="Enter current password">
+                        </div>
+                        <div class="mb-3">
+                            <label for="newPass" class="form-label small text-muted">New Password</label>
+                            <input type="password" class="form-control glass-input" id="newPass" required
+                                placeholder="Enter new password">
+                        </div>
+                        <div class="mb-3">
+                            <label for="confirmPass" class="form-label small text-muted">Confirm New Password</label>
+                            <input type="password" class="form-control glass-input" id="confirmPass" required
+                                placeholder="Repeat new password">
+                        </div>
+                    </form>
+                </div>
+                <div class="modal-footer border-0 pt-0">
+                    <button type="button" class="btn btn-outline-light btn-sm" data-bs-dismiss="modal">Cancel</button>
+                    <button type="button" class="btn btn-primary btn-sm px-4" id="savePasswordBtn"
+                        onclick="handlePasswordChange()">Update Password</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <footer class="app-footer">
         <div class="container text-center">
             <p class="mb-0 text-muted">© 2025 Progress Board. All rights reserved.</p>
@@ -470,6 +527,11 @@
             name: '',
             email: '',
         };
+
+        const urlParams = new URLSearchParams(window.location.search);
+        const targetUserId = urlParams.get('id') || localStorage.getItem('userId');
+        const loggedInUserId = localStorage.getItem('userId');
+        const isOwnProfile = targetUserId === loggedInUserId;
 
         // ── Helpers ────────────────────────────────────────────
         function showToast(msg, isError = false) {
@@ -498,9 +560,20 @@
             return new Date(ms).toLocaleDateString('en-IN', { year: 'numeric', month: 'long', day: 'numeric' });
         }
 
+        function maskEmail(email) {
+            if (!email || email === 'Email not found') return '—';
+            const parts = email.split('@');
+            if (parts.length !== 2) return '—';
+            const [name, domain] = parts;
+            return name.charAt(0) + '****' + name.slice(-1) + '@' + domain;
+        }
+
         // ── Populate UI ────────────────────────────────────────
         function renderProfile(name, email, userId) {
             profileData = { userId, name, email };
+
+            // Update Page Title
+            document.title = isOwnProfile ? 'My Profile - Progress Board' : `${name}'s Profile - Progress Board`;
 
             // Avatar
             const initials = getInitials(name);
@@ -514,7 +587,7 @@
             removeSkeleton(nameEl);
 
             const emailEl = document.getElementById('profileEmailDisplay');
-            emailEl.textContent = email || '—';
+            emailEl.textContent = isOwnProfile ? (email || '—') : maskEmail(email);
             removeSkeleton(emailEl);
 
             // Meta badges
@@ -530,7 +603,7 @@
             document.getElementById('inputName').value = name || '';
 
             const valEmail = document.getElementById('valEmail');
-            valEmail.textContent = email || '—';
+            valEmail.textContent = isOwnProfile ? (email || '—') : maskEmail(email);
             removeSkeleton(valEmail);
 
             document.getElementById('valUserId').textContent = userId || '—';
@@ -543,68 +616,111 @@
                     since.textContent = formatDate(ts);
                 } catch { since.textContent = '—'; }
             }
+
+            // Hide UI elements if not own profile
+            if (!isOwnProfile) {
+                document.querySelectorAll('.edit-btn, .save-btn, .cancel-btn, .danger-zone').forEach(el => {
+                    el.style.display = 'none';
+                });
+
+                // Hide the entire account section for other users
+                const accountSection = document.getElementById('accountSection');
+                if (accountSection) accountSection.style.display = 'none';
+
+                // Also hide the person icon/lock in address field if needed
+                const nameActions = document.querySelector('#fieldName .field-actions');
+                if (nameActions) nameActions.style.display = 'none';
+            }
         }
 
         // ── Fetch profile data ─────────────────────────────────
         async function loadProfile() {
-            const userId = localStorage.getItem('userId');
-            if (!userId) {
+            if (!targetUserId) {
                 window.location.href = 'login.html';
                 return;
             }
 
-            document.getElementById('valUserId').textContent = userId;
+            document.getElementById('valUserId').textContent = targetUserId;
 
             try {
                 // Fetch name
-                const nameRes = await fetch(`${BASE_URL}/user/get-userid/${userId}`);
+                const nameRes = await fetch(`${BASE_URL}/user/get-userid/${targetUserId}`);
                 const name = await nameRes.text();
 
                 // Fetch email
                 let email = '';
                 try {
-                    const emailRes = await fetch(`${BASE_URL}/user/get-email/${userId}`);
+                    const emailRes = await fetch(`${BASE_URL}/user/get-email/${targetUserId}`);
                     if (emailRes.ok) {
                         email = await emailRes.text();
                     }
                 } catch (err) { console.error('Email fetch failed:', err); }
 
-                renderProfile(name, email, userId);
-                localStorage.setItem('userName', name);
-                if (email) localStorage.setItem('userEmail', email);
+                renderProfile(name, email, targetUserId);
+
+                if (isOwnProfile) {
+                    localStorage.setItem('userName', name);
+                    if (email) localStorage.setItem('userEmail', email);
+                }
 
             } catch (err) {
                 console.error('Failed to load profile:', err);
                 showToast('Failed to load profile data.', true);
-                renderProfile(
-                    localStorage.getItem('userName') || 'Unknown',
-                    localStorage.getItem('userEmail') || '',
-                    userId
-                );
             }
         }
 
         // ── Fetch stats ────────────────────────────────────────
         async function loadStats() {
-            const userId = localStorage.getItem('userId');
-            if (!userId) return;
+            if (!targetUserId) return;
 
             try {
-                const res = await fetch(`${BASE_URL}/user/get-stats/${userId}`);
+                const res = await fetch(`${BASE_URL}/user/get-stats/${targetUserId}`);
                 if (res.ok) {
                     const stats = await res.json();
                     document.getElementById('statGroups').textContent = stats.groupsJoined || '0';
                     document.getElementById('statTasks').textContent = stats.tasksCompleted || '0';
                     document.getElementById('statPending').textContent = stats.tasksPending || '0';
                     document.getElementById('statStreak').textContent = stats.streak || '0';
+                    document.getElementById('statXP').textContent = stats.xp || '0';
+                    document.getElementById('statLevel').textContent = stats.level || '1';
+
+                    renderBadges(stats.badges || []);
                 }
             } catch (err) {
                 console.error('Failed to load stats:', err);
             }
         }
 
+        function renderBadges(badges) {
+            const container = document.getElementById('badgesContainer');
+            if (!badges || badges.length === 0) return;
+
+            container.innerHTML = '';
+            badges.forEach(badge => {
+                const badgeEl = document.createElement('div');
+                badgeEl.className = 'badge-item text-center';
+                badgeEl.style.width = '80px';
+
+                let iconClass = 'fa-solid fa-shield-halved';
+                let color = '#8B5CF6';
+
+                if (badge === 'First Step') iconClass = 'fa-solid fa-shoe-prints';
+                if (badge === 'Task Master') iconClass = 'fa-solid fa-crown';
+                if (badge === '7-Day Streak') { iconClass = 'fa-solid fa-fire-flame-curved'; color = '#F59E0B'; }
+
+                badgeEl.innerHTML = `
+                    <div style="font-size: 2rem; color: ${color}; margin-bottom: 0.5rem;">
+                        <i class="${iconClass}"></i>
+                    </div>
+                    <div class="small" style="font-size: 0.7rem; color: var(--text-secondary);">${badge}</div>
+                `;
+                container.appendChild(badgeEl);
+            });
+        }
+
         // ── Edit-in-place ──────────────────────────────────────
         function enableEdit(fieldKey) {
+            if (!isOwnProfile) return;
             const val = document.getElementById(`val${fieldKey}`);
             const input = document.getElementById(`input${fieldKey}`);
             const saveBtn = document.getElementById(`save${fieldKey}`);
@@ -636,17 +752,16 @@
         }
 
         async function saveField(fieldKey) {
+            if (!isOwnProfile) return;
             const val = document.getElementById(`val${fieldKey}`);
             const input = document.getElementById(`input${fieldKey}`);
             const newValue = input.value.trim();
 
             if (!newValue) { showToast('Value cannot be empty.', true); return; }
 
-            const userId = localStorage.getItem('userId');
-
             if (fieldKey === 'Name') {
                 try {
-                    const res = await fetch(`${BASE_URL}/user/update-name/${userId}?name=${encodeURIComponent(newValue)}`, {
+                    const res = await fetch(`${BASE_URL}/user/update-name/${loggedInUserId}?name=${encodeURIComponent(newValue)}`, {
                         method: 'PUT'
                     });
 
@@ -688,10 +803,10 @@
 
         // ── Delete account ─────────────────────────────────────
         async function confirmDeleteAccount() {
+            if (!isOwnProfile) return;
             if (confirm('⚠️ Are you sure you want to delete your account? This action is permanent and cannot be undone.')) {
-                const userId = localStorage.getItem('userId');
                 try {
-                    const res = await fetch(`${BASE_URL}/user/id/${userId}`, {
+                    const res = await fetch(`${BASE_URL}/user/id/${loggedInUserId}`, {
                         method: 'DELETE'
                     });
                     if (res.ok) {
@@ -709,10 +824,53 @@
             }
         }
 
+        async function handlePasswordChange() {
+            const oldPass = document.getElementById('oldPass').value;
+            const newPass = document.getElementById('newPass').value;
+            const confirmPass = document.getElementById('confirmPass').value;
+
+            if (!oldPass || !newPass || !confirmPass) {
+                showToast('Please fill all password fields.', true);
+                return;
+            }
+
+            if (newPass !== confirmPass) {
+                showToast('New passwords do not match.', true);
+                return;
+            }
+
+            const btn = document.getElementById('savePasswordBtn');
+            const originalText = btn.textContent;
+            btn.disabled = true;
+            btn.textContent = 'Updating...';
+
+            try {
+                const res = await fetch(`${BASE_URL}/user/change-password/${loggedInUserId}?oldPass=${encodeURIComponent(oldPass)}&newPass=${encodeURIComponent(newPass)}`, {
+                    method: 'PUT'
+                });
+
+                if (res.ok) {
+                    showToast('Password updated successfully!');
+                    const modal = bootstrap.Modal.getInstance(document.getElementById('passwordModal'));
+                    modal.hide();
+                    document.getElementById('passwordForm').reset();
+                } else if (res.status === 401) {
+                    showToast('Incorrect current password.', true);
+                } else {
+                    showToast('Failed to update password.', true);
+                }
+            } catch (err) {
+                console.error('Password change failed:', err);
+                showToast('Network error occurred.', true);
+            } finally {
+                btn.disabled = false;
+                btn.textContent = originalText;
+            }
+        }
+
         // ── Init ───────────────────────────────────────────────
         window.onload = async function () {
-            const userId = localStorage.getItem('userId');
-            if (!userId) {
+            if (!loggedInUserId && !urlParams.get('id')) {
                 window.location.href = 'login.html';
                 return;
             }
