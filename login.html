@@ -148,8 +148,7 @@
                             Remember me
                         </label>
                     </div>
-                    <a href="#" onclick="alert('Forgot password functionality coming soon!'); return false;">Forgot
-                        Password?</a>
+                    <a href="#" data-bs-toggle="modal" data-bs-target="#forgotPasswordModal">Forgot Password?</a>
                 </div>
 
                 <button id="loginSubmitBtn" type="submit" class="btn btn-primary btn-login">
@@ -163,6 +162,70 @@
                         onclick="sessionStorage.setItem('openSignup', 'true');">Sign up</a>
                 </div>
             </form>
+        </div>
+    </div>
+
+    <!-- Forgot Password Modal -->
+    <div class="modal fade" id="forgotPasswordModal" tabindex="-1" aria-labelledby="forgotPasswordModalLabel"
+        aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content glass-card border-0"
+                style="background: var(--bg-dark); backdrop-filter: blur(12px); border: 1px solid var(--glass-border) !important; color: white;">
+                <div class="modal-header border-0 pb-0">
+                    <h5 class="modal-title" id="forgotPasswordModalLabel"><i class="bi bi-question-circle me-2"
+                            style="color: var(--color-primary);"></i>Reset Password</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"
+                        aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <!-- Step 1: Email -->
+                    <div id="forgotStep1">
+                        <p class="small text-secondary mb-4">Enter your email address and we'll send you an OTP to reset
+                            your password.</p>
+                        <div class="form-floating mb-3">
+                            <input type="email" class="form-control glass-input" id="forgotEmail" placeholder=" "
+                                required
+                                style="background: rgba(255, 255, 255, 0.05); border: 1px solid var(--glass-border); color: white;">
+                            <label for="forgotEmail" style="color: var(--text-muted);">Email address</label>
+                        </div>
+                        <button type="button" class="btn btn-primary w-100" id="sendOtpBtn" onclick="requestResetOtp()">
+                            <span id="otpSpinner" class="spinner-border spinner-border-sm d-none me-2"
+                                role="status"></span>
+                            Send OTP
+                        </button>
+                    </div>
+
+                    <!-- Step 2: OTP + New Password -->
+                    <div id="forgotStep2" class="d-none">
+                        <p class="small text-secondary mb-4">We've sent an OTP to your email. Enter it below along with
+                            your new password.</p>
+                        <div class="form-floating mb-3">
+                            <input type="number" class="form-control glass-input" id="forgotOtp" placeholder=" "
+                                required>
+                            <label for="forgotOtp" style="color: var(--text-muted);">OTP Code</label>
+                        </div>
+                        <div class="form-floating mb-3">
+                            <input type="password" class="form-control glass-input" id="forgotNewPass" placeholder=" "
+                                required>
+                            <label for="forgotNewPass" style="color: var(--text-muted);">New Password</label>
+                        </div>
+                        <div class="form-floating mb-3">
+                            <input type="password" class="form-control glass-input" id="forgotConfirmPass"
+                                placeholder=" " required>
+                            <label for="forgotConfirmPass" style="color: var(--text-muted);">Confirm New
+                                Password</label>
+                        </div>
+                        <button type="button" class="btn btn-primary w-100" id="resetBtn"
+                            onclick="handlePasswordReset()">
+                            <span id="resetSpinner" class="spinner-border spinner-border-sm d-none me-2"
+                                role="status"></span>
+                            Reset Password
+                        </button>
+                        <button type="button" class="btn btn-link btn-sm w-100 mt-2 text-secondary text-decoration-none"
+                            onclick="toggleForgotStep(1)">Back</button>
+                    </div>
+                </div>
+            </div>
         </div>
     </div>
 
@@ -249,6 +312,71 @@
             } finally {
                 isLoggingIn = false;
                 toggleButtonLoading('loginSubmitBtn', 'loginSpinner', false);
+            }
+        }
+
+        function toggleForgotStep(step) {
+            document.getElementById('forgotStep1').classList.add('d-none');
+            document.getElementById('forgotStep2').classList.add('d-none');
+            document.getElementById(`forgotStep${step}`).classList.remove('d-none');
+        }
+
+        async function requestResetOtp() {
+            const email = document.getElementById('forgotEmail').value;
+            if (!email) { showAlert('Please enter your email address.', 'warning'); return; }
+
+            toggleButtonLoading('sendOtpBtn', 'otpSpinner', true);
+
+            try {
+                const res = await fetch(`${BASE_URL}/Auth/Send-Otp-Mail?to=${encodeURIComponent(email)}`, {
+                    method: 'POST'
+                });
+                if (res.ok) {
+                    showAlert('OTP sent to your email!', 'success');
+                    toggleForgotStep(2);
+                } else {
+                    showAlert('Failed to send OTP. Please check your email.', 'danger');
+                }
+            } catch (err) {
+                console.error(err);
+                showAlert('Network error occurred.', 'danger');
+            } finally {
+                toggleButtonLoading('sendOtpBtn', 'otpSpinner', false);
+            }
+        }
+
+        async function handlePasswordReset() {
+            const email = document.getElementById('forgotEmail').value;
+            const otp = document.getElementById('forgotOtp').value;
+            const newPass = document.getElementById('forgotNewPass').value;
+            const confirmPass = document.getElementById('forgotConfirmPass').value;
+
+            if (!otp || !newPass || !confirmPass) { showAlert('Please fill all fields.', 'warning'); return; }
+            if (newPass !== confirmPass) { showAlert('Passwords do not match.', 'warning'); return; }
+
+            toggleButtonLoading('resetBtn', 'resetSpinner', true);
+
+            try {
+                const res = await fetch(`${BASE_URL}/Auth/reset-password?email=${encodeURIComponent(email)}&otp=${otp}&newPass=${encodeURIComponent(newPass)}`, {
+                    method: 'POST'
+                });
+                if (res.ok) {
+                    const result = await res.text();
+                    if (result === 'true') {
+                        showAlert('Password reset successfully! You can now log in.', 'success');
+                        const modal = bootstrap.Modal.getInstance(document.getElementById('forgotPasswordModal'));
+                        modal.hide();
+                    } else {
+                        showAlert('Invalid OTP or email. Please try again.', 'danger');
+                    }
+                } else {
+                    showAlert('Failed to reset password.', 'danger');
+                }
+            } catch (err) {
+                console.error(err);
+                showAlert('Network error occurred.', 'danger');
+            } finally {
+                toggleButtonLoading('resetBtn', 'resetSpinner', false);
             }
         }
 
